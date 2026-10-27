@@ -17,6 +17,8 @@ type SettingsSheetProps = {
   onSetPrivate: (value: boolean) => void;
   onSetFollowPermission: (value: FollowPermission) => void;
   onSetInvitePermission: (value: InvitePermission) => void;
+  /** Opens the radial quick-share dial manager. */
+  onManageDial: () => void;
   onDownload: () => void;
   onDelete: () => void;
   onClose: () => void;
@@ -36,6 +38,7 @@ export function SettingsSheet({
   onSetPrivate,
   onSetFollowPermission,
   onSetInvitePermission,
+  onManageDial,
   onDownload,
   onDelete,
   onClose,
@@ -179,6 +182,22 @@ export function SettingsSheet({
           Saved with your account. These limits are applied by the server once this preview has one; today they
           are kept in this browser.
         </p>
+      </div>
+
+      <div className="mt-5 border-t border-line pt-4">
+        <SectionLabel>Quick share</SectionLabel>
+        <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+          Choose the squads and players that bloom around your thumb when you hold a card in the feed, and let
+          smart suggestions top up whatever is left.
+        </p>
+        <button
+          type="button"
+          onClick={onManageDial}
+          className="mt-2 flex h-10 items-center justify-center gap-1.5 rounded-xl border border-line px-4 text-[12px] font-semibold text-[#4d535c] transition-colors hover:border-brand hover:text-brand"
+        >
+          <Icon name="send" size={14} strokeWidth={2.1} />
+          Manage radial dial
+        </button>
       </div>
 
       <div className="mt-5 border-t border-line pt-4">

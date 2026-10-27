@@ -36,6 +36,10 @@ type SnagScreenProps = {
   reported?: boolean;
   onOpenProfile: () => void;
   onAddComment: (text: string) => void;
+  /** Owner actions — only your own posts get them. */
+  isMine?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
   /** Tapping a #hashtag searches the feed for it. */
   onHashtag?: (value: string) => void;
   /** Tapping an @mention opens that player. */
@@ -60,12 +64,17 @@ export function SnagScreen({
   reported = false,
   onOpenProfile,
   onAddComment,
+  isMine = false,
+  onEdit,
+  onDelete,
   onHashtag,
   onMention,
   onClose,
 }: SnagScreenProps) {
   const [draft, setDraft] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  /** Deleting asks twice, so a stray tap cannot remove a post. */
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const commentsRef = useRef<HTMLDivElement>(null);
   const clip = useClipUrl(snag.clipId);
@@ -100,7 +109,10 @@ export function SnagScreen({
             </button>
             <button
               type="button"
-              onClick={() => setMenuOpen((open) => !open)}
+              onClick={() => {
+                setConfirmDelete(false);
+                setMenuOpen((open) => !open);
+              }}
               aria-expanded={menuOpen}
               aria-haspopup="menu"
               aria-label="More actions"
@@ -114,13 +126,51 @@ export function SnagScreen({
                 <button
                   type="button"
                   aria-label="Close menu"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => {
+                    setConfirmDelete(false);
+                    setMenuOpen(false);
+                  }}
                   className="fixed inset-0 z-30 cursor-default"
                 />
                 <div
                   role="menu"
                   className="absolute right-0 top-12 z-40 w-56 overflow-hidden rounded-2xl border border-line bg-white p-1.5 shadow-[0_18px_48px_rgba(23,25,29,0.18)]"
                 >
+                  {isMine && onEdit ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onEdit();
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[12.5px] font-semibold text-ink transition-colors hover:bg-surface"
+                    >
+                      <Icon name="edit" size={16} />
+                      Edit post
+                    </button>
+                  ) : null}
+
+                  {isMine && onDelete ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        if (!confirmDelete) {
+                          setConfirmDelete(true);
+                          return;
+                        }
+                        setConfirmDelete(false);
+                        setMenuOpen(false);
+                        onDelete();
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[12.5px] font-semibold text-[#b3261e] transition-colors hover:bg-[#fdf2f1]"
+                    >
+                      <Icon name="trash" size={16} />
+                      {confirmDelete ? "Tap again to delete" : "Delete post"}
+                    </button>
+                  ) : null}
+
                   <button
                     type="button"
                     role="menuitem"
@@ -162,6 +212,9 @@ export function SnagScreen({
               src={clip}
               poster={snag.image}
               controls
+              autoPlay
+              muted
+              loop
               playsInline
               preload="metadata"
               style={{ aspectRatio: snag.aspect }}
@@ -205,7 +258,7 @@ export function SnagScreen({
                     Ad
                   </span>
                 ) : null}
-                <GameTag game={snag.game} height={20} tone="onLight" className="max-w-[72px]" />
+                <GameTag game={snag.game} height={26} tone="onLight" className="max-w-[104px]" />
                 <span className="rounded-md bg-surface px-2 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-[#4d535c]">
                   {snag.category}
                 </span>

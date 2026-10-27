@@ -5,16 +5,20 @@ import { ComposeSheet } from "./components/ComposeSheet";
 import { EditSnagSheet } from "./components/EditSnagSheet";
 import { FilterRail } from "./components/FilterRail";
 import { LegalSheet } from "./components/LegalSheet";
+import { ManageDialSheet } from "./components/ManageDialSheet";
 import { InboxScreen, ThreadScreen } from "./components/MessagesScreen";
 import { NotificationsScreen } from "./components/NotificationsScreen";
 import { ProfileScreen } from "./components/ProfileScreen";
+import { QuickShareDial } from "./components/QuickShareDial";
 import { ReportSheet, type ReportMode } from "./components/ReportSheet";
 import { ShareSheet } from "./components/ShareSheet";
 import { SnagCard } from "./components/SnagCard";
 import { SnagScreen, type CommentView } from "./components/SnagScreen";
 import { SquadScreen } from "./components/SquadScreen";
 import { SquadsScreen } from "./components/SquadsScreen";
+import { Toast, type ToastMessage } from "./components/Toast";
 import { TopBar } from "./components/TopBar";
+import { TopGamesSheet } from "./components/TopGamesSheet";
 import { WelcomeFlow } from "./components/WelcomeFlow";
 import { SEED_COMMENTS, SEED_LIKES, SEED_SAVES, SEED_SHARES, type Comment } from "./data/engagement";
 import { COPYRIGHT_YEAR, LEGAL_DOCS, findLegalDoc } from "./data/legal";
@@ -45,6 +49,16 @@ import {
   type ThreadMode,
 } from "./data/threads";
 import { deleteAccount, findAccount, handleForEmail, type Session } from "./lib/auth";
+import {
+  DIAL_DEFAULTS,
+  deliveryLine,
+  dialKey,
+  normalizeDialConfig,
+  planDial,
+  type DialConfig,
+  type DialFacts,
+  type DialTarget,
+} from "./lib/dial";
 import { downloadJson } from "./lib/export";
 import type { FollowPermission, InvitePermission } from "./lib/settings";
 import { readShareTarget, type ShareTarget } from "./lib/share";
@@ -67,12 +81,17 @@ type ProfileFields = {
   bio: string;
   avatar?: string;
   banner?: string;
+  /** Keys for uploaded MP4 profile art held in the clip store. */
+  avatarClip?: string;
+  bannerClip?: string;
   interests?: string[];
   private?: boolean;
   followPermission?: FollowPermission;
   invitePermission?: InvitePermission;
 };
 type ShareState = { snag: Snag; quick: boolean };
+/** An open quick-share dial, with where the finger went down. */
+type DialState = { snag: Snag; at: { x: number; y: number }; test: boolean };
 
 const ME_ID = "you";
 
@@ -109,6 +128,14 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<NavTab>("home");
   const [share, setShare] = useState<ShareState | null>(null);
+  const [dial, setDial] = useState<DialState | null>(null);
+  const [dialConfigRaw, setDialConfigRaw] = usePersistentState<DialConfig>("snagchat:dial", DIAL_DEFAULTS);
+  const [manageDial, setManageDial] = useState(false);
+  const [topGames, setTopGames] = useState(false);
+  const [customTags, setCustomTags] = usePersistentState<string[]>("snagchat:tags", []);
+  /** Snags flicked into a squad gallery from the feed. */
+  const [squadShares, setSquadShares] = usePersistentState<Snag[]>("snagchat:squad-shares", []);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
   const [composing, setComposing] = useState(false);
   const [composeSquadId, setComposeSquadId] = useState<string | null>(null);
   const [editingSnag, setEditingSnag] = useState<Snag | null>(null);
@@ -150,9 +177,11 @@ export default function App() {
   };
 
   const snags = useMemo(
-    () => [...mySnags, ...SEED_SNAGS].filter((snag) => !removedSnags.includes(snag.id)),
-    [mySnags, removedSnags],
+    () => [...mySnags, ...squadShares, ...SEED_SNAGS].filter((snag) => !removedSnags.includes(snag.id)),
+    [mySnags, squadShares, removedSnags],
   );
+
+  const dialConfig = useMemo(() => normalizeDialConfig(dialConfigRaw), [dialConfigRaw]);
 
   /** Galleries of private squads you are not in stay out of the feed. */
   const hiddenGalleries = useMemo(
@@ -196,6 +225,8 @@ export default function App() {
   const unreadTotal = threadList.reduce((total, thread) => total + thread.unread, 0);
   const unreadNotifications = notifications.filter((item) => !item.read).length;
   const suggestions = PLAYERS.filter((player) => player.id !== ME_ID && !threads[player.id]).slice(0, 8);
+  /** Your own posts, which are the only ones the editor can write back to. */
+  const mySnagIds = useMemo(() => new Set(mySnags.map((item) => item.id)), [mySnags]);
 
   const squadPostCounts = useMemo(() => {
     return squads.reduce<Record<string, number>>((counts, squad) => {
@@ -446,6 +477,159 @@ export default function App() {
     setSharedSnags((current) => (current.includes(snagId) ? current : [...current, snagId]));
   };
 
+  const showToast = (text: string, detail?: string, spark = false) =>
+    setToast({ id: Date.now(), text, detail, spark });
+
+  /**
+   * A delete or an edit can be taken back for a few seconds, so a slip is never
+   * final. The toast holds longer than usual because it has a button to reach
+   * for.
+   */
+  const showUndoToast = (text: string, detail: string, undo: () => void) =>
+    setToast({
+      id: Date.now(),
+      text,
+      detail,
+      holdMs: 6000,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          undo();
+          setToast(null);
+        },
+      },
+    });
+
+  /** Everyone the dial can hold: your squads first, then the players you message. */
+  const dialRoster = useMemo<DialTarget[]>(() => {
+    const mySquads = squads.filter((squad) => squad.members.some((member) => member.playerId === ME_ID));
+    const contacts = Object.values(threads)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .map((thread) => findPlayer(thread.playerId))
+      .filter((player): player is Player => Boolean(player));
+
+    return [
+      ...mySquads.map((squad) => ({
+        key: dialKey("squad", squad.id),
+        kind: "squad" as const,
+        refId: squad.id,
+        name: squad.name,
+        members: squad.members.length,
+      })),
+      ...contacts.map((player) => ({
+        key: dialKey("player", player.id),
+        kind: "player" as const,
+        refId: player.id,
+        name: player.name,
+        handle: player.handle,
+        avatar: player.avatar,
+        verified: player.verified,
+      })),
+    ];
+  }, [squads, threads]);
+
+  /** What the engine reads to decide which contacts deserve a slot. */
+  const dialFacts = useMemo<DialFacts>(() => {
+    const lastSeen: Record<string, number> = {};
+    const unread: Record<string, number> = {};
+
+    for (const thread of Object.values(threads)) {
+      lastSeen[thread.playerId] = thread.updatedAt;
+      unread[thread.playerId] = thread.unread;
+    }
+
+    const squadPosts: Record<string, number> = {};
+    const squadMembers: Record<string, number> = {};
+
+    for (const squad of squads) {
+      squadPosts[squad.id] = snags.filter((snag) => snag.squadId === squad.id).length;
+      squadMembers[squad.id] = squad.members.length;
+      // A squad is only as active as its liveliest chat.
+      const activity = squad.members.reduce(
+        (latest, member) => Math.max(latest, lastSeen[member.playerId] ?? 0),
+        0,
+      );
+      if (activity) lastSeen[squad.id] = activity;
+    }
+
+    return { lastSeen, unread, squadPosts, squadMembers };
+  }, [threads, squads, snags]);
+
+  const dialPlan = useMemo(() => planDial(dialConfig, dialRoster, dialFacts), [dialConfig, dialRoster, dialFacts]);
+
+  /** The rings a held card will actually show. */
+  const dialTargets = useMemo(
+    () => dialPlan.slots.filter((target): target is DialTarget => Boolean(target)),
+    [dialPlan],
+  );
+
+  const openDial = (snag: Snag, at: { x: number; y: number }, test = false) => setDial({ snag, at, test });
+
+  const patchDialConfig = (patch: (config: DialConfig) => DialConfig) =>
+    setDialConfigRaw((current) => patch(normalizeDialConfig(current)));
+
+  /**
+   * Flicks a snag into every chosen chat. A player gets the snag as a message;
+   * a squad gets its own copy in the gallery, so the feed keeps one original.
+   */
+  const deliverSnag = (targets: DialTarget[], all: boolean) => {
+    const open = dial;
+    setDial(null);
+    if (!open || targets.length === 0) return;
+
+    if (open.test) {
+      showToast("Test flick complete", "Nothing was posted — that was a rehearsal.");
+      return;
+    }
+
+    const at = Date.now();
+
+    for (const target of targets) {
+      if (target.kind === "player") {
+        const messageId = `msg-${at}-${Math.random().toString(36).slice(2, 6)}`;
+        setThreads((current) => {
+          const base = current[target.refId] ?? {
+            playerId: target.refId,
+            messages: [],
+            unread: 0,
+            updatedAt: at,
+          };
+          const payload: ThreadMessage = {
+            id: messageId,
+            from: "me",
+            at,
+            snag: { image: open.snag.image, title: open.snag.title, game: open.snag.game },
+          };
+          return {
+            ...current,
+            [target.refId]: { ...base, messages: [...base.messages, payload], updatedAt: at, unread: 0 },
+          };
+        });
+        advanceMessageStatus(target.refId, messageId);
+        continue;
+      }
+
+      const copyId = `share-${open.snag.id}-${target.refId}`;
+      setSquadShares((current) =>
+        current.some((snag) => snag.id === copyId)
+          ? current
+          : [
+              {
+                ...open.snag,
+                id: copyId,
+                squadId: target.refId,
+                category: "Squad Galleries",
+                postedAt: "now",
+              },
+              ...current,
+            ],
+      );
+    }
+
+    markShared(open.snag.id);
+    showToast(all ? "Snag sent to all" : "Snag sent", deliveryLine(targets));
+  };
+
   const likeCountFor = (snagId: string) => (SEED_LIKES[snagId] ?? 0) + (likes.includes(snagId) ? 1 : 0);
   const saveCountFor = (snagId: string) => (SEED_SAVES[snagId] ?? 0) + (saves.includes(snagId) ? 1 : 0);
   const shareCountFor = (snagId: string) => (SEED_SHARES[snagId] ?? 0) + (sharedSnags.includes(snagId) ? 1 : 0);
@@ -547,10 +731,23 @@ export default function App() {
   };
 
   const deletePost = (snag: Snag) => {
+    const wasMine = mySnags.some((item) => item.id === snag.id);
+    const at = mySnags.findIndex((item) => item.id === snag.id);
+
     setRemovedSnags((current) => (current.includes(snag.id) ? current : [...current, snag.id]));
-    if (mySnags.some((item) => item.id === snag.id)) {
-      setMySnags((current) => current.filter((item) => item.id !== snag.id));
-    }
+    if (wasMine) setMySnags((current) => current.filter((item) => item.id !== snag.id));
+
+    // Undo un-hides it and puts it back in its old place in your own posts.
+    showUndoToast("Snag deleted", snag.title, () => {
+      setRemovedSnags((current) => current.filter((id) => id !== snag.id));
+      if (!wasMine) return;
+      setMySnags((current) => {
+        if (current.some((item) => item.id === snag.id)) return current;
+        const next = [...current];
+        next.splice(at < 0 ? 0 : Math.min(at, next.length), 0, snag);
+        return next;
+      });
+    });
   };
 
   const deleteSquad = (squad: Squad) => {
@@ -627,10 +824,21 @@ export default function App() {
 
   const saveSnagEdit = (values: { title: string; game: string }) => {
     if (!editingSnag) return;
+
+    // The edit sheet hands back the whole title, hashtags included, so the old
+    // title and game are all the undo needs to put the snag back as it was.
+    const before = { title: editingSnag.title, game: editingSnag.game };
+    const snagId = editingSnag.id;
+
     setMySnags((current) =>
-      current.map((snag) => (snag.id === editingSnag.id ? { ...snag, ...values } : snag)),
+      current.map((snag) => (snag.id === snagId ? { ...snag, ...values } : snag)),
     );
     setEditingSnag(null);
+    showUndoToast("Snag updated", values.title, () =>
+      setMySnags((current) =>
+        current.map((snag) => (snag.id === snagId ? { ...snag, ...before } : snag)),
+      ),
+    );
   };
 
   const navigate = (tab: NavTab) => {
@@ -817,12 +1025,15 @@ export default function App() {
                     saved={saves.includes(snag.id)}
                     saveCount={saveCountFor(snag.id)}
                     onOpen={openSnag}
-                    onQuickShare={(item) => setShare({ snag: item, quick: true })}
+                    onQuickShare={(item, at) => openDial(item, at)}
                     onOpenProfile={openProfile}
                     onToggleLike={(item) => toggleLike(item.id)}
                     onToggleSave={(item) => toggleSave(item.id)}
                     onHashtag={searchTag}
                     onMention={openProfile}
+                    isMine={snag.creatorId === ME_ID}
+                    onEdit={mySnagIds.has(snag.id) ? (item) => setEditingSnag(item) : undefined}
+                    onDelete={(item) => deletePost(item)}
                   />
                   ))}
                 </div>
@@ -917,6 +1128,60 @@ export default function App() {
         />
       ) : null}
 
+      {dial ? (
+        <QuickShareDial
+          snag={dial.snag}
+          targets={dialTargets}
+          origin={dial.at}
+          onSend={deliverSnag}
+          onCancel={() => setDial(null)}
+        />
+      ) : null}
+
+      {manageDial ? (
+        <ManageDialSheet
+          roster={dialRoster}
+          config={dialConfig}
+          plan={dialPlan}
+          onSetSlots={(slots) => patchDialConfig((config) => ({ ...config, slots }))}
+          onToggleSmart={(smart) => patchDialConfig((config) => ({ ...config, smart }))}
+          onLock={(key) =>
+            patchDialConfig((config) => {
+              const slots = [...config.slots];
+              const open = slots.findIndex((entry) => !entry);
+              if (open >= 0) slots[open] = key;
+              return { ...config, slots, locked: Array.from(new Set([...config.locked, key])) };
+            })
+          }
+          onStartTest={(origin) => {
+            const preview = visibleSnags[0] ?? snags[0];
+            if (preview) openDial(preview, origin, true);
+          }}
+          onInviteSquad={() => {
+            setManageDial(false);
+            navigate("squads");
+          }}
+          onQuickAdd={() => setTopGames(true)}
+          onClose={() => setManageDial(false)}
+        />
+      ) : null}
+
+      {topGames ? (
+        <TopGamesSheet
+          selected={me.interests ?? []}
+          customTags={customTags}
+          squads={squads.map((squad) => squad.name)}
+          onChange={(games) => setMe((current) => ({ ...current, interests: games }))}
+          onCreateTag={(tag) => {
+            if (tag) setCustomTags((current) => (current.includes(tag) ? current : [tag, ...current]));
+            showToast(`#${tag} attached as a unique tag!`, "It is offered wherever you add tags.", true);
+          }}
+          onClose={() => setTopGames(false)}
+        />
+      ) : null}
+
+      {toast ? <Toast toast={toast} onDismiss={() => setToast(null)} /> : null}
+
       {report ? (
         <ReportSheet
           mode={report.mode}
@@ -987,6 +1252,15 @@ export default function App() {
               onAddComment={(text) => addComment(snag.id, text)}
               onHashtag={searchTag}
               onMention={openProfile}
+              isMine={author.id === ME_ID}
+              onEdit={() => {
+                popScreen();
+                setEditingSnag(snag);
+              }}
+              onDelete={() => {
+                deletePost(snag);
+                popScreen();
+              }}
               onClose={popScreen}
             />
           );
@@ -1104,6 +1378,8 @@ export default function App() {
             }}
             onClose={popScreen}
             onOpenSnag={openSnag}
+            onEditSnag={(snag) => setEditingSnag(snag)}
+            onDeleteSnag={(snag) => deletePost(snag)}
             onSaveProfile={saveProfile}
             accountEmail={session.email}
             isDemoSession={session.demo}
@@ -1111,6 +1387,7 @@ export default function App() {
             followPermission={me.followPermission}
             invitePermission={me.invitePermission}
             onChangeSettings={(patch) => setMe((current) => ({ ...current, ...patch }))}
+            onManageDial={() => setManageDial(true)}
             onDownloadData={downloadData}
             onDeleteAccount={deleteMyAccount}
           />

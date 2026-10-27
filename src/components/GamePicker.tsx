@@ -37,7 +37,7 @@ export function GamePicker({ value, onChange, custom, onCustomChange }: GamePick
               }`}
             >
               {known ? (
-                <GameLogo game={name} height={18} tone={selected ? "onDark" : "onLight"} />
+                <GameLogo game={name} height={26} tone={selected ? "onDark" : "onLight"} />
               ) : (
                 <Icon
                   name="plus"

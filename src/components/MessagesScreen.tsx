@@ -62,6 +62,28 @@ export function InboxScreen({ threads, unreadTotal, suggestions, onClose, onOpen
       />
 
       <div className="flex-1 overflow-y-auto">
+        {/* Suggestions sit above the threads, so starting a chat is the first thing offered. */}
+        {suggestions.length > 0 ? (
+          <div className="border-b border-line px-4 py-4">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#4d535c]">Start a chat</p>
+            <div className="no-scrollbar mt-3 flex gap-3 overflow-x-auto pb-1">
+              {suggestions.map((player) => (
+                <button
+                  key={player.id}
+                  type="button"
+                  onClick={() => onOpenThread(player.id)}
+                  className="flex w-16 shrink-0 flex-col items-center gap-1.5"
+                >
+                  <Avatar name={player.name} size={48} tone="soft" src={player.avatar} online={player.online} />
+                  <span className="w-full truncate text-center text-[10px] font-semibold text-[#4d535c]">
+                    @{player.handle}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         {rows.length > 0 ? (
           <ul className="divide-y divide-line">
             {rows.map(({ thread, player }) => {
@@ -128,31 +150,10 @@ export function InboxScreen({ threads, unreadTotal, suggestions, onClose, onOpen
           <div className="px-4 py-12 text-center">
             <p className="font-display text-[15px] font-extrabold tracking-[-0.02em]">No conversations yet</p>
             <p className="mx-auto mt-1.5 max-w-[32ch] text-[12px] leading-relaxed text-muted">
-              Message a player from their profile, or start a chat below.
+              Message a player from their profile, or start a chat above.
             </p>
           </div>
         )}
-
-        {suggestions.length > 0 ? (
-          <div className="border-t border-line px-4 py-5">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#4d535c]">Start a chat</p>
-            <div className="no-scrollbar mt-3 flex gap-3 overflow-x-auto pb-1">
-              {suggestions.map((player) => (
-                <button
-                  key={player.id}
-                  type="button"
-                  onClick={() => onOpenThread(player.id)}
-                  className="flex w-16 shrink-0 flex-col items-center gap-1.5"
-                >
-                  <Avatar name={player.name} size={48} tone="soft" src={player.avatar} online={player.online} />
-                  <span className="w-full truncate text-center text-[10px] font-semibold text-[#4d535c]">
-                    @{player.handle}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
       </div>
     </Screen>
   );

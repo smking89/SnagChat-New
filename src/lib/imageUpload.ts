@@ -1,4 +1,11 @@
-import { CLIP_LIMITS, CLIP_POSTER_FALLBACK, checkClipFile, checkClipProbe, formatClipLength } from "./clipLimits";
+import {
+  CLIP_LIMITS,
+  CLIP_POSTER_FALLBACK,
+  checkClipFile,
+  checkClipProbe,
+  formatBytes,
+  formatClipLength,
+} from "./clipLimits";
 
 type Target = { width: number; height: number };
 
@@ -12,9 +19,12 @@ export const BANNER_SIZE = { width: 1200, height: 380 };
 
 /** The recommended upload sizes shown in the composer and profile editor. */
 export const UPLOAD_HINTS = {
-  cover: "Recommended 1080 × 1350 px (4:5). JPG, PNG or WebP up to 6 MB, or a GIF up to 1.5 MB.",
-  avatar: "Recommended 320 × 320 px, square. JPG, PNG or WebP, or a GIF up to 1.5 MB.",
-  banner: "Recommended 1200 × 380 px, wide. JPG, PNG or WebP, or a GIF up to 1.5 MB.",
+  cover: "Recommended 1080 × 1350 px (4:5). JPG, PNG, WebP or GIF up to 1.5 MB, or an MP4 clip.",
+  avatar: "Recommended 320 × 320 px, square. JPG, PNG, WebP, GIF or MP4.",
+  banner: "Recommended 1200 × 380 px, wide. JPG, PNG, WebP, GIF or MP4.",
+  clipProfile: `Profile MP4s follow the same clip limits: up to ${formatBytes(
+    CLIP_LIMITS.maxBytes,
+  )}, from ${CLIP_LIMITS.minSeconds}s to ${CLIP_LIMITS.maxSeconds}s. They loop, and their first frame becomes the still cover.`,
 } as const;
 
 async function loadDrawable(file: File): Promise<ImageBitmap | HTMLImageElement> {
@@ -264,11 +274,14 @@ function loadVideo(file: File): Promise<{ video: HTMLVideoElement; url: string }
   });
 }
 
-/** Grabs one frame so the post has a cover before the video itself loads. */
-async function grabPoster(video: HTMLVideoElement): Promise<string> {
+/**
+ * Grabs one frame so the post (or the profile art) has a cover before the video
+ * itself loads. With a target it centre-crops the frame the way still images
+ * are cropped, so an MP4 photo lines up with a JPG one.
+ */
+async function grabPoster(video: HTMLVideoElement, target?: Target): Promise<string> {
   const width = video.videoWidth;
   const height = video.videoHeight;
-  const scale = Math.min(1, 720 / Math.max(width, height));
 
   const at = Math.min(CLIP_LIMITS.posterSeconds, Math.max(0, video.duration / 2));
   if (at > 0 && Number.isFinite(at)) {
@@ -289,13 +302,40 @@ async function grabPoster(video: HTMLVideoElement): Promise<string> {
   }
 
   const canvas = document.createElement("canvas");
+  const context = () => {
+    const found = canvas.getContext("2d");
+    if (!found) throw new Error("This browser cannot process clips.");
+    return found;
+  };
+
+  if (target) {
+    canvas.width = target.width;
+    canvas.height = target.height;
+
+    const ratio = target.width / target.height;
+    let cropWidth = width;
+    let cropHeight = height;
+    if (width / height > ratio) cropWidth = height * ratio;
+    else cropHeight = width / ratio;
+
+    context().drawImage(
+      video,
+      (width - cropWidth) / 2,
+      (height - cropHeight) / 2,
+      cropWidth,
+      cropHeight,
+      0,
+      0,
+      target.width,
+      target.height,
+    );
+    return canvas.toDataURL("image/jpeg", 0.82);
+  }
+
+  const scale = Math.min(1, 720 / Math.max(width, height));
   canvas.width = Math.max(1, Math.round(width * scale));
   canvas.height = Math.max(1, Math.round(height * scale));
-
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("This browser cannot process clips.");
-
-  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  context().drawImage(video, 0, 0, canvas.width, canvas.height);
   return canvas.toDataURL("image/jpeg", 0.8);
 }
 
@@ -337,4 +377,42 @@ export async function fileToClip(file: File): Promise<ClipUpload> {
     bytes: file.size,
     previewUrl: url,
   };
+}
+
+export type ProfileClipUpload = {
+  /** Cropped first frame, kept as the still cover for the profile art. */
+  poster: string;
+  /** Blob URL for the picked file, played while the editor is open. */
+  previewUrl: string;
+  seconds: number;
+};
+
+/**
+ * An MP4 profile photo or banner. It is held to the same clip policy as a post
+ * and its first frame is cropped to the size stills are cropped to.
+ */
+export async function fileToProfileClip(file: File, target: Target): Promise<ProfileClipUpload> {
+  const fileCheck = checkClipFile({ name: file.name, type: file.type, bytes: file.size });
+  if (!fileCheck.ok) throw new Error(fileCheck.reason);
+
+  const { video, url } = await loadVideo(file);
+  const probe = { duration: video.duration, width: video.videoWidth, height: video.videoHeight };
+  const verdict = checkClipProbe(probe);
+
+  if (!verdict.ok) {
+    URL.revokeObjectURL(url);
+    throw new Error(verdict.reason);
+  }
+
+  let poster: string;
+  try {
+    poster = await grabPoster(video, target);
+  } catch {
+    poster = CLIP_POSTER_FALLBACK;
+  }
+
+  video.removeAttribute("src");
+  video.load();
+
+  return { poster, previewUrl: url, seconds: Math.max(1, Math.round(probe.duration)) };
 }

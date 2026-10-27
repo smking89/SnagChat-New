@@ -14,7 +14,8 @@ const COMPOSE_CATEGORIES: SnagCategory[] = ["Clips", "Loadouts", "Skins", "Scree
 
 /** An MP4 waiting to be posted, plus the poster frame that stands in for it. */
 type ClipDraft = {
-  id: string;
+  /** Key in the clip store. Missing when this browser cannot hold the file. */
+  id?: string;
   name: string;
   poster: string;
   aspect: string;

@@ -69,6 +69,32 @@ export function isCatalogGame(name: string): boolean {
 }
 
 /**
+ * Short genre label shown next to a game in the pickers, the quick-add sheet
+ * and search rows, so a list of titles scans by what kind of game it is.
+ */
+export const GAME_CATEGORIES: Record<string, string> = {
+  Rust: "Survival",
+  Minecraft: "Sandbox",
+  "ARK: Survival Ascended": "Survival",
+  DayZ: "Survival",
+  "Call of Duty": "Shooter",
+  Palworld: "Adventure",
+  "Conan Exiles": "Survival",
+  "Cyberpunk 2077": "RPG",
+  "Apex Legends": "Shooter",
+  "Elden Ring": "RPG",
+  "Rocket League": "Sports",
+  "Street Fighter 6": "Fighting",
+  Skyrim: "RPG",
+  Squad: "Shooter",
+  Battlefield: "Shooter",
+};
+
+export function gameCategory(name: string): string {
+  return GAME_CATEGORIES[findGame(name)?.name ?? name.trim()] ?? "Game";
+}
+
+/**
  * The hashtag a post about this game should carry: the studio's own short name
  * where there is one ("ARK: Survival Ascended" → "#ark"), a slug otherwise.
  */

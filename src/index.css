@@ -103,6 +103,132 @@
   }
 }
 
+/*
+ * The splash logo: the fist stretches wide, snaps tall and settles back like a
+ * rubber band, so the brand lands with a spring instead of a static mark.
+ */
+@keyframes splash-rubber {
+  0% {
+    transform: scale(1, 1);
+  }
+  16% {
+    transform: scale(1.24, 0.76);
+  }
+  32% {
+    transform: scale(0.82, 1.2);
+  }
+  48% {
+    transform: scale(1.13, 0.89);
+  }
+  62% {
+    transform: scale(0.93, 1.07);
+  }
+  76% {
+    transform: scale(1.05, 0.96);
+  }
+  88% {
+    transform: scale(0.985, 1.015);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+/*
+ * The quick-share dial. Slots burst outward and settle with a hair of
+ * overshoot; the stagger is set per slot from the component.
+ */
+@keyframes dial-bloom {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* The release: the chosen ring pops, then collapses into its check. */
+@keyframes dial-send {
+  0% {
+    transform: scale(1);
+  }
+  22% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(0);
+    opacity: 0.2;
+  }
+}
+
+@keyframes dial-shockwave {
+  from {
+    opacity: 0.9;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+
+@keyframes dial-particle {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0);
+  }
+}
+
+/* The confirmation pill that drops in under the status bar. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+}
+
+/* Smart-filled slot: a slow gradient ring instead of a dashed outline. */
+@keyframes smart-shift {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 200% 50%;
+  }
+}
+
+/* The engine listening for its first bit of activity. */
+@keyframes smart-breath {
+  0%,
+  100% {
+    transform: scale(0.98);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
 /* The arrival spring when a card scrolls into view. */
 @keyframes card-pop {
   0% {
@@ -253,6 +379,62 @@
 
   .heart-burst {
     animation: heart-burst 720ms cubic-bezier(0.22, 1.4, 0.4, 1) both;
+  }
+
+  /* One slot of the quick-share dial. */
+  .dial-slot {
+    animation: dial-bloom 160ms cubic-bezier(0.15, 1, 0.3, 1.1) both;
+    animation-delay: var(--dial-delay, 0ms);
+  }
+
+  .dial-scrim {
+    animation: scrim-in 200ms ease-out both;
+  }
+
+  .dial-send {
+    animation: dial-send 180ms cubic-bezier(0.15, 1, 0.3, 1.1) both;
+  }
+
+  .dial-shockwave {
+    animation: dial-shockwave 180ms ease-out both;
+  }
+
+  .dial-particle {
+    animation: dial-particle 320ms ease-out both;
+  }
+
+  .toast-pill {
+    animation: toast-in 260ms cubic-bezier(0.15, 1, 0.3, 1.1) both;
+  }
+
+  .toast-leaving {
+    animation: toast-out 300ms linear both;
+  }
+
+  /* A ring the engine filled rather than the player. */
+  .smart-slot {
+    background-image: linear-gradient(120deg, #9400d3, #22d3ee, #9400d3);
+    background-size: 200% 100%;
+    animation: smart-shift 3s linear infinite;
+  }
+
+  .smart-breath {
+    animation: smart-breath 3s ease-in-out infinite;
+  }
+
+  /* The splash mark, pulling against its own band. */
+  .splash-logo {
+    background-image: url("/brand/snagchat-icon.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    /*
+     * The artwork is left exactly as it was drawn — a black outline around a
+     * white fill — so the real fist shows on the purple, including every line.
+     */
+    transform-origin: 50% 58%;
+    animation: splash-rubber 780ms cubic-bezier(0.36, 1.32, 0.32, 1) 2;
+    will-change: transform;
   }
 
   /* Mobile only: the swipe gesture has no desktop equivalent. */

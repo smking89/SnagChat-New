@@ -8,6 +8,9 @@ export type Player = {
   following: number;
   avatar?: string;
   banner?: string;
+  /** Stored MP4 profile art: the still above is its first frame. */
+  avatarClip?: string;
+  bannerClip?: string;
   /** Presence dot next to the avatar. */
   online?: boolean;
   /** Blue check next to the name. */

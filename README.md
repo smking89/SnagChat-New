@@ -83,7 +83,7 @@ Provider buttons are a **preview stand-in**: there is no OAuth in this build, so
 
 ## Onboarding
 
-Email registration collects the profile details itself, so it lands straight on the feed with your interests on your profile. Everyone else — demo account or Steam/Xbox/Discord — gets the three-step welcome flow (`src/components/WelcomeFlow.tsx`): what SnagChat is, display name, handle and optional photo, then a starting feed filter. Skipping or finishing writes `snagchat:onboarded`, so it appears once per browser. Clear that key to see it again.
+Email registration collects the profile details itself, so it lands straight on the feed with your interests on your profile. Everyone else — demo account or Steam/Xbox/Discord — gets the four-step welcome flow (`src/components/WelcomeFlow.tsx`): what SnagChat is, **how it works**, display name, handle and optional photo, then a starting feed filter. The walkthrough step is the manual for the build: the `HOW_TO` table in that file spells out hold-to-quick-share, tap versus double tap, both swipes, the + composer with its clip limits, squad galleries and ownership, messaging with the 24-hour and view-once modes, and profile settings. Each line maps to a real interaction, so keep them in step if a gesture changes. Skipping or finishing writes `snagchat:onboarded`, so it appears once per browser. Clear that key to see it again.
 
 ## State
 

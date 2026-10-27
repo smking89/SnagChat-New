@@ -13,21 +13,47 @@ type AvatarProps = {
   tone?: AvatarTone;
   className?: string;
   src?: string;
+  /** An MP4 profile photo: plays on a loop in place of the still. */
+  videoSrc?: string;
   /** Shows a green presence dot on the avatar. */
   online?: boolean;
 };
 
-export function Avatar({ name, size = 22, tone = "soft", className = "", src, online = false }: AvatarProps) {
+export function Avatar({
+  name,
+  size = 22,
+  tone = "soft",
+  className = "",
+  src,
+  videoSrc,
+  online = false,
+}: AvatarProps) {
   const letter = name.trim().charAt(0).toUpperCase() || "?";
 
-  const face = src ? (
+  const frame = `shrink-0 rounded-full object-cover ${tone === "glass" ? "ring-1 ring-white/40" : ""} ${className}`;
+
+  const face = videoSrc ? (
+    <video
+      src={videoSrc}
+      poster={src}
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      aria-hidden="true"
+      draggable={false}
+      style={{ width: size, height: size }}
+      className={frame}
+    />
+  ) : src ? (
     <img
       src={src}
       alt=""
       aria-hidden="true"
       draggable={false}
       style={{ width: size, height: size }}
-      className={`shrink-0 rounded-full object-cover ${tone === "glass" ? "ring-1 ring-white/40" : ""} ${className}`}
+      className={frame}
     />
   ) : (
     <span

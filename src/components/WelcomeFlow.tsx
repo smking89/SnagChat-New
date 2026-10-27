@@ -46,6 +46,66 @@ const HIGHLIGHTS = [
   },
 ];
 
+/**
+ * The moves a new player needs on day one, grouped the way the app is. Every
+ * line here describes something the build actually does, so nobody is told to
+ * look for a button that is not there.
+ */
+type HowToItem = { icon: Parameters<typeof Icon>[0]["name"]; title: string; body: string };
+
+const HOW_TO: { section: string; items: HowToItem[] }[] = [
+  {
+    section: "In the feed",
+    items: [
+      {
+        icon: "share",
+        title: "Hold a card to quick-share",
+        body: "Press and hold any post and a ring of your squads and chats blooms around your thumb. Slide onto one and let go — it lands in that gallery or DM.",
+      },
+      {
+        icon: "heart",
+        title: "Tap to open, double tap to like",
+        body: "One tap opens the post with its comments and shares. Two quick taps on the artwork like it without leaving the feed.",
+      },
+      {
+        icon: "bookmark",
+        title: "Swipe a card, swipe the feed",
+        body: "Swipe right to like and left to save for later. On a phone, swipe the feed itself to move between tabs.",
+      },
+    ],
+  },
+  {
+    section: "Posting and squads",
+    items: [
+      {
+        icon: "plus",
+        title: "Post with the +",
+        body: "The purple + takes a clip, loadout, screenshot or skin. MP4 clips up to 50 MB, plus up to four #tags and @mentions on one post.",
+      },
+      {
+        icon: "users",
+        title: "Squads own their gallery",
+        body: "Owners invite and remove members and can hand the squad over; only an owner can delete it. Everyone in a squad can post to its gallery.",
+      },
+    ],
+  },
+  {
+    section: "People and your profile",
+    items: [
+      {
+        icon: "message",
+        title: "Message any player",
+        body: "The message icon on a profile opens a private chat. Any thread can be set to vanish after 24 hours, or as soon as it has been viewed once.",
+      },
+      {
+        icon: "settings",
+        title: "Make it yours",
+        body: "Profile settings hold your privacy, who can follow or invite you, downloading your data, and the radial dial you just learned.",
+      },
+    ],
+  },
+];
+
 export function WelcomeFlow({ defaultName, defaultHandle, defaultAvatar, onFinish, onSkip }: WelcomeFlowProps) {
   const [step, setStep] = useState(0);
   const [name, setName] = useState(defaultName);
@@ -90,7 +150,7 @@ export function WelcomeFlow({ defaultName, defaultHandle, defaultAvatar, onFinis
       return;
     }
     setError(null);
-    setStep(2);
+    setStep(3);
   };
 
   const finish = () => {
@@ -107,7 +167,7 @@ export function WelcomeFlow({ defaultName, defaultHandle, defaultAvatar, onFinis
       <div className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col px-5 pb-[max(26px,env(safe-area-inset-bottom))] pt-6">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-1.5" aria-hidden="true">
-            {[0, 1, 2].map((index) => (
+            {[0, 1, 2, 3].map((index) => (
               <span
                 key={index}
                 className={`h-1.5 rounded-full transition-all ${
@@ -167,18 +227,74 @@ export function WelcomeFlow({ defaultName, defaultHandle, defaultAvatar, onFinis
                 onClick={goToDetails}
                 className="h-[52px] w-full rounded-[14px] bg-brand text-[14.5px] font-semibold text-white transition-colors hover:bg-brand-deep"
               >
-                Set up your profile
+                Show me how it works
               </button>
               <p className="mt-3 text-center text-[10.5px] leading-relaxed text-faint">
-                Two quick steps — you can change all of it later in your profile.
+                Three quick steps — you can change all of it later in your profile.
               </p>
             </div>
           </section>
         ) : null}
 
         {step === 1 ? (
+          <section aria-labelledby="welcome-how-title" className="flex flex-1 flex-col pt-8">
+            <p className="text-[9.5px] font-extrabold uppercase tracking-[0.22em] text-brand">Step 2 of 4</p>
+            <h1
+              id="welcome-how-title"
+              className="mt-3 font-display text-[32px] font-extrabold leading-[0.96] tracking-[-0.05em]"
+            >
+              How SnagChat works.
+            </h1>
+            <p className="mt-2 max-w-[42ch] text-[13px] leading-relaxed text-muted">
+              A handful of gestures cover almost everything. Here is the whole platform, in the order you will use
+              it.
+            </p>
+
+            <div className="mt-5 space-y-5">
+              {HOW_TO.map((group) => (
+                <div key={group.section}>
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#4d535c]">
+                    {group.section}
+                  </p>
+                  <ul className="mt-2 space-y-3">
+                    {group.items.map((item) => (
+                      <li key={item.title} className="flex gap-3">
+                        <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
+                          <Icon name={item.icon} size={16} strokeWidth={2} />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-[12.5px] font-bold tracking-[-0.01em]">{item.title}</p>
+                          <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted">{item.body}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-auto flex gap-2 pt-8">
+              <button
+                type="button"
+                onClick={() => setStep(0)}
+                className="h-12 rounded-[14px] border border-line px-4 text-[13px] font-semibold text-[#4d535c] transition-colors hover:border-[#d8dce1]"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className="h-12 flex-1 rounded-[14px] bg-brand text-[14px] font-semibold text-white transition-colors hover:bg-brand-deep"
+              >
+                Set up your profile
+              </button>
+            </div>
+          </section>
+        ) : null}
+
+        {step === 2 ? (
           <section aria-labelledby="welcome-profile-title" className="flex flex-1 flex-col pt-8">
-            <p className="text-[9.5px] font-extrabold uppercase tracking-[0.22em] text-brand">Step 2 of 3</p>
+            <p className="text-[9.5px] font-extrabold uppercase tracking-[0.22em] text-brand">Step 3 of 4</p>
             <h1
               id="welcome-profile-title"
               className="mt-3 font-display text-[32px] font-extrabold leading-[0.96] tracking-[-0.05em]"
@@ -263,7 +379,7 @@ export function WelcomeFlow({ defaultName, defaultHandle, defaultAvatar, onFinis
                 type="button"
                 onClick={() => {
                   setError(null);
-                  setStep(0);
+                  setStep(1);
                 }}
                 className="h-12 rounded-[14px] border border-line px-4 text-[13px] font-semibold text-[#4d535c] transition-colors hover:border-[#d8dce1]"
               >
@@ -280,9 +396,9 @@ export function WelcomeFlow({ defaultName, defaultHandle, defaultAvatar, onFinis
           </section>
         ) : null}
 
-        {step === 2 ? (
+        {step === 3 ? (
           <section aria-labelledby="welcome-feed-title" className="flex flex-1 flex-col pt-8">
-            <p className="text-[9.5px] font-extrabold uppercase tracking-[0.22em] text-brand">Step 3 of 3</p>
+            <p className="text-[9.5px] font-extrabold uppercase tracking-[0.22em] text-brand">Step 4 of 4</p>
             <h1
               id="welcome-feed-title"
               className="mt-3 font-display text-[32px] font-extrabold leading-[0.96] tracking-[-0.05em]"
@@ -326,7 +442,7 @@ export function WelcomeFlow({ defaultName, defaultHandle, defaultAvatar, onFinis
             <div className="mt-auto flex gap-2 pt-8">
               <button
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
                 className="h-12 rounded-[14px] border border-line px-4 text-[13px] font-semibold text-[#4d535c] transition-colors hover:border-[#d8dce1]"
               >
                 Back

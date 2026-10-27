@@ -3,12 +3,20 @@ import { formatCount, type Player } from "../data/players";
 import type { Snag } from "../data/snags";
 import { REGIONS } from "../data/regions";
 import { checkUsername, findAccount, updateAccount } from "../lib/auth";
-import { AVATAR_SIZE, BANNER_SIZE, fileToProfileImage, UPLOAD_HINTS } from "../lib/imageUpload";
+import { saveClip, useClipUrl } from "../lib/clipStore";
+import {
+  AVATAR_SIZE,
+  BANNER_SIZE,
+  fileToProfileClip,
+  fileToProfileImage,
+  UPLOAD_HINTS,
+} from "../lib/imageUpload";
 import type { FollowPermission, InvitePermission } from "../lib/settings";
 import { AccountDetails } from "./AccountDetails";
 import { CountUp } from "./CountUp";
 import { profileShareUrl, shareLink, type ShareOutcome } from "../lib/share";
 import { Avatar } from "./Avatar";
+import { ConfirmSheet } from "./ConfirmSheet";
 import { Icon } from "./Icon";
 import { ImageViewer } from "./ImageViewer";
 import { Screen, ScreenHeader } from "./Screen";
@@ -20,6 +28,9 @@ type ProfileDraft = {
   bio: string;
   avatar?: string;
   banner?: string;
+  /** Clip keys for MP4 profile art, whose first frame is the still above. */
+  avatarClip?: string;
+  bannerClip?: string;
 };
 
 type ProfileScreenProps = {
@@ -33,6 +44,9 @@ type ProfileScreenProps = {
   onCreate: () => void;
   onClose: () => void;
   onOpenSnag: (snag: Snag) => void;
+  /** Your own posts: the grid on your profile offers these, nobody else's does. */
+  onEditSnag?: (snag: Snag) => void;
+  onDeleteSnag?: (snag: Snag) => void;
   onSaveProfile: (values: ProfileDraft) => void;
   accountEmail?: string;
   isDemoSession?: boolean;
@@ -44,6 +58,8 @@ type ProfileScreenProps = {
     followPermission?: FollowPermission;
     invitePermission?: InvitePermission;
   }) => void;
+  /** Opens the radial quick-share dial manager from inside Settings. */
+  onManageDial?: () => void;
   onDownloadData?: () => void;
   onDeleteAccount?: () => void;
 };
@@ -70,6 +86,8 @@ export function ProfileScreen({
   onCreate,
   onClose,
   onOpenSnag,
+  onEditSnag,
+  onDeleteSnag,
   onSaveProfile,
   accountEmail,
   isDemoSession = false,
@@ -77,6 +95,7 @@ export function ProfileScreen({
   followPermission = "everyone",
   invitePermission = "everyone",
   onChangeSettings,
+  onManageDial,
   onDownloadData,
   onDeleteAccount,
 }: ProfileScreenProps) {
@@ -91,10 +110,14 @@ export function ProfileScreen({
     bio: player.bio,
     avatar: player.avatar,
     banner: player.banner,
+    avatarClip: player.avatarClip,
+    bannerClip: player.bannerClip,
   });
   const [regionDraft, setRegionDraft] = useState(findAccount(accountEmail)?.region ?? "");
   const [handleError, setHandleError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<{ src: string; label: string } | null>(null);
+  /** A snag awaiting confirmation before it is deleted from the grid. */
+  const [pendingSnag, setPendingSnag] = useState<Snag | null>(null);
   const avatarInput = useRef<HTMLInputElement>(null);
   const bannerInput = useRef<HTMLInputElement>(null);
 
@@ -115,6 +138,8 @@ export function ProfileScreen({
       bio: player.bio,
       avatar: player.avatar,
       banner: player.banner,
+      avatarClip: player.avatarClip,
+      bannerClip: player.bannerClip,
     });
     setRegionDraft(findAccount(accountEmail)?.region ?? "");
     setHandleError(null);
@@ -143,6 +168,8 @@ export function ProfileScreen({
       bio: draft.bio.trim(),
       avatar: draft.avatar,
       banner: draft.banner,
+      avatarClip: draft.avatarClip,
+      bannerClip: draft.bannerClip,
     });
 
     if (accountEmail) {
@@ -161,9 +188,21 @@ export function ProfileScreen({
     if (!file) return;
     setUploadError(null);
     setBusy(kind);
+
+    const target = kind === "avatar" ? AVATAR_SIZE : BANNER_SIZE;
+
     try {
-      const dataUrl = await fileToProfileImage(file, kind === "avatar" ? AVATAR_SIZE : BANNER_SIZE);
-      setDraft((current) => ({ ...current, [kind]: dataUrl }));
+      // An MP4 profile photo plays on a loop; stills and GIFs crop as before.
+      const clip = file.type.startsWith("video/") ? await fileToProfileClip(file, target) : null;
+      const dataUrl = clip ? clip.poster : await fileToProfileImage(file, target);
+      const clipId = clip ? await saveClip(file) : undefined;
+
+      setDraft((current) => ({
+        ...current,
+        [kind]: dataUrl,
+        [kind === "avatar" ? "avatarClip" : "bannerClip"]: clipId,
+      }));
+
       if (persist) {
         onSaveProfile({
           name: player.name,
@@ -171,10 +210,12 @@ export function ProfileScreen({
           bio: player.bio,
           avatar: kind === "avatar" ? dataUrl : player.avatar,
           banner: kind === "banner" ? dataUrl : player.banner,
+          avatarClip: kind === "avatar" ? clipId : player.avatarClip,
+          bannerClip: kind === "banner" ? clipId : player.bannerClip,
         });
       }
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "That image could not be uploaded.");
+      setUploadError(error instanceof Error ? error.message : "That file could not be uploaded.");
     } finally {
       setBusy(null);
     }
@@ -193,6 +234,9 @@ export function ProfileScreen({
   };
 
   const openArt = (kind: "avatar" | "banner") => {
+    // A clip is already playing in place; the still viewer would freeze it.
+    if (kind === "avatar" ? avatarClipUrl : bannerClipUrl) return;
+
     if (kind === "avatar") {
       if (avatarSrc) setViewing({ src: avatarSrc, label: `${isMe ? "Your" : `${player.name}'s`} profile photo` });
       else avatarInput.current?.click();
@@ -205,6 +249,10 @@ export function ProfileScreen({
 
   const avatarSrc = editing ? draft.avatar : player.avatar;
   const bannerSrc = editing ? draft.banner : player.banner;
+  const avatarClipUrl = useClipUrl(editing ? draft.avatarClip : player.avatarClip);
+  const bannerClipUrl = useClipUrl(editing ? draft.bannerClip : player.bannerClip);
+  const draftAvatarClipUrl = useClipUrl(draft.avatarClip);
+  const draftBannerClipUrl = useClipUrl(draft.bannerClip);
 
   return (
     <Screen labelledBy="profile-name" onClose={onClose}>
@@ -249,7 +297,18 @@ export function ProfileScreen({
 
       <div className="flex-1 overflow-y-auto pb-8">
         <div className="relative h-32 overflow-hidden bg-brand-tint">
-          {bannerSrc ? (
+          {bannerClipUrl ? (
+            <video
+              src={bannerClipUrl}
+              poster={bannerSrc}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              className="h-full w-full object-cover"
+            />
+          ) : bannerSrc ? (
             <img src={bannerSrc} alt="" className="h-full w-full object-cover" draggable={false} />
           ) : (
             <>
@@ -290,6 +349,7 @@ export function ProfileScreen({
                   size={84}
                   tone={isMe ? "brand" : "soft"}
                   src={avatarSrc}
+                  videoSrc={avatarClipUrl ?? undefined}
                   online={player.online}
                   className="font-display ring-4 ring-white"
                 />
@@ -305,14 +365,14 @@ export function ProfileScreen({
                   <input
                     ref={avatarInput}
                     type="file"
-                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    accept="image/png,image/jpeg,image/webp,image/gif,video/mp4"
                     className="sr-only"
                     onChange={onProfileFile("avatar")}
                   />
                   <input
                     ref={bannerInput}
                     type="file"
-                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    accept="image/png,image/jpeg,image/webp,image/gif,video/mp4"
                     className="sr-only"
                     onChange={onProfileFile("banner")}
                   />
@@ -426,7 +486,9 @@ export function ProfileScreen({
                   {draft.avatar ? (
                     <button
                       type="button"
-                      onClick={() => setDraft((current) => ({ ...current, avatar: undefined }))}
+                      onClick={() =>
+                        setDraft((current) => ({ ...current, avatar: undefined, avatarClip: undefined }))
+                      }
                       className="text-[10.5px] font-semibold text-muted transition-colors hover:text-ink"
                     >
                       Remove
@@ -434,6 +496,7 @@ export function ProfileScreen({
                   ) : null}
                 </div>
                 <p className="mt-1 text-[10px] leading-relaxed text-faint">{UPLOAD_HINTS.avatar}</p>
+                <p className="mt-1 text-[10px] leading-relaxed text-faint">{UPLOAD_HINTS.clipProfile}</p>
                 <div className="mt-2 flex items-center gap-3">
                   <button
                     type="button"
@@ -441,7 +504,13 @@ export function ProfileScreen({
                     className="rounded-full"
                     aria-label={draft.avatar ? "View profile photo" : "No profile photo yet"}
                   >
-                    <Avatar name={draft.name || player.name} size={52} tone="soft" src={draft.avatar} />
+                    <Avatar
+                      name={draft.name || player.name}
+                      size={52}
+                      tone="soft"
+                      src={draft.avatar}
+                      videoSrc={draftAvatarClipUrl ?? undefined}
+                    />
                   </button>
                   <label
                     htmlFor="avatar-upload"
@@ -452,7 +521,7 @@ export function ProfileScreen({
                   <input
                     id="avatar-upload"
                     type="file"
-                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    accept="image/png,image/jpeg,image/webp,image/gif,video/mp4"
                     className="sr-only"
                     onChange={onFileChange("avatar")}
                   />
@@ -463,7 +532,9 @@ export function ProfileScreen({
                   {draft.banner ? (
                     <button
                       type="button"
-                      onClick={() => setDraft((current) => ({ ...current, banner: undefined }))}
+                      onClick={() =>
+                        setDraft((current) => ({ ...current, banner: undefined, bannerClip: undefined }))
+                      }
                       className="text-[10.5px] font-semibold text-muted transition-colors hover:text-ink"
                     >
                       Remove
@@ -471,13 +542,25 @@ export function ProfileScreen({
                   ) : null}
                 </div>
                 <p className="mt-1 text-[10px] leading-relaxed text-faint">{UPLOAD_HINTS.banner}</p>
+                <p className="mt-1 text-[10px] leading-relaxed text-faint">{UPLOAD_HINTS.clipProfile}</p>
                 <button
                   type="button"
                   onClick={() => draft.banner && setViewing({ src: draft.banner, label: "Banner" })}
                   className="mt-2 block h-20 w-full overflow-hidden rounded-xl border border-line bg-surface"
                   aria-label={draft.banner ? "View banner" : "No banner yet"}
                 >
-                  {draft.banner ? (
+                  {draftBannerClipUrl ? (
+                    <video
+                      src={draftBannerClipUrl}
+                      poster={draft.banner}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : draft.banner ? (
                     <img src={draft.banner} alt="" className="h-full w-full object-cover" draggable={false} />
                   ) : (
                     <span className="grid h-full place-items-center text-[10.5px] text-faint">No banner yet</span>
@@ -493,7 +576,7 @@ export function ProfileScreen({
                   <input
                     id="banner-upload"
                     type="file"
-                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    accept="image/png,image/jpeg,image/webp,image/gif,video/mp4"
                     className="sr-only"
                     onChange={onFileChange("banner")}
                   />
@@ -505,8 +588,9 @@ export function ProfileScreen({
                   </p>
                 ) : null}
                 <p className="mt-2 text-[10px] leading-relaxed text-faint">
-                  Uploads are cropped to the sizes above and saved in this browser only. Animated GIFs are kept
-                  as they are, up to 1.5 MB.
+                  Uploads are saved in this browser only. Stills are cropped to the sizes above, animated GIFs
+                  are kept as they are up to 1.5 MB, and MP4s play on a loop with their first frame as the still
+                  cover.
                 </p>
 
                 <div className="mt-4 border-t border-line pt-3">
@@ -655,24 +739,53 @@ export function ProfileScreen({
             ) : snags.length > 0 ? (
               <div className="mt-2 grid grid-cols-3 gap-1.5 sm:gap-2">
                 {snags.map((snag) => (
-                  <button
-                    key={snag.id}
-                    type="button"
-                    onClick={() => onOpenSnag(snag)}
-                    aria-label={`Open ${snag.title}`}
-                    className="group relative aspect-square overflow-hidden rounded-xl bg-surface"
-                  >
-                    <img
-                      src={snag.image}
-                      alt=""
-                      loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      draggable={false}
-                    />
-                    <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#080a0e]/90 to-transparent px-2 pb-1.5 pt-6 text-left text-[9.5px] font-bold leading-tight text-white">
+                  <div key={snag.id} className="group relative aspect-square overflow-hidden rounded-xl bg-surface">
+                    {/* The tile opens the snag; the controls sit on top of it. */}
+                    <button
+                      type="button"
+                      onClick={() => onOpenSnag(snag)}
+                      aria-label={`Open ${snag.title}`}
+                      className="absolute inset-0"
+                    >
+                      <img
+                        src={snag.image}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        draggable={false}
+                      />
+                    </button>
+
+                    <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#080a0e]/90 to-transparent px-2 pb-1.5 pt-6 text-left text-[9.5px] font-bold leading-tight text-white">
                       <span className="line-clamp-2">{snag.title}</span>
                     </span>
-                  </button>
+
+                    {/* Your own posts, managed the way the squad gallery does it. */}
+                    {isMe && (onEditSnag || onDeleteSnag) ? (
+                      <div className="absolute right-1.5 top-1.5 flex gap-1">
+                        {onEditSnag ? (
+                          <button
+                            type="button"
+                            onClick={() => onEditSnag(snag)}
+                            aria-label={`Edit ${snag.title}`}
+                            className="grid h-7 w-7 place-items-center rounded-full bg-white/95 text-ink shadow-sm transition-colors hover:bg-white"
+                          >
+                            <Icon name="edit" size={13} />
+                          </button>
+                        ) : null}
+                        {onDeleteSnag ? (
+                          <button
+                            type="button"
+                            onClick={() => setPendingSnag(snag)}
+                            aria-label={`Delete ${snag.title}`}
+                            className="grid h-7 w-7 place-items-center rounded-full bg-white/95 text-[#b3261e] shadow-sm transition-colors hover:bg-white"
+                          >
+                            <Icon name="trash" size={13} />
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                 ))}
               </div>
             ) : (
@@ -702,7 +815,24 @@ export function ProfileScreen({
             setSettingsOpen(false);
           }}
           onDelete={() => onDeleteAccount?.()}
+          onManageDial={() => {
+            setSettingsOpen(false);
+            onManageDial?.();
+          }}
           onClose={() => setSettingsOpen(false)}
+        />
+      ) : null}
+
+      {pendingSnag ? (
+        <ConfirmSheet
+          title="Delete this snag?"
+          body={`"${pendingSnag.title}" comes off your profile and out of the feed.`}
+          confirmLabel="Delete snag"
+          onConfirm={() => {
+            onDeleteSnag?.(pendingSnag);
+            setPendingSnag(null);
+          }}
+          onClose={() => setPendingSnag(null)}
         />
       ) : null}
 

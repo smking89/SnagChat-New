@@ -67,4 +67,58 @@ export function insertTag(text: string, tag: string, maxLength = 70): string {
 }
 
 /** Hashtags offered alongside a game, so a poster rarely has to type one. */
-export const SUGGESTED_HASHTAGS = ["clip", "loadout", "screenshot", "squad", "gg"];
+export const SUGGESTED_HASHTAGS = ["clip", "loadout", "skin", "screenshot", "squad", "gg"];
+
+/** True when the draft already carries this exact tag. */
+export function hasTag(text: string, tag: string): boolean {
+  return parseTags(text).some(
+    (segment) => segment.type !== "text" && segment.raw.toLowerCase() === tag.toLowerCase(),
+  );
+}
+
+/** Drops a tag from a draft and tidies up the gap it leaves behind. */
+export function removeTag(text: string, tag: string): string {
+  const start = text.toLowerCase().indexOf(tag.toLowerCase());
+  if (start < 0) return text;
+
+  const next = `${text.slice(0, start)}${text.slice(start + tag.length)}`;
+  return next.replace(/[ \t]{2,}/g, " ").replace(/\s+([,.!?])/g, "$1").trimEnd();
+}
+
+/** Adds the tag when it is missing, drops it when it is already there. */
+export function toggleTag(text: string, tag: string, maxLength = 70): string {
+  return hasTag(text, tag) ? removeTag(text, tag) : insertTag(text, tag, maxLength);
+}
+
+/** Cleans whatever someone typed into a hashtag: "my clip" → "#myclip". */
+export function toHashtag(input: string): string | null {
+  const body = input.replace(/^#+/, "").replace(/[^A-Za-z0-9_]/g, "");
+  return body.length >= 2 ? `#${body}` : null;
+}
+
+export type TagQuery = { kind: "hashtag" | "mention"; query: string };
+
+/**
+ * The half-typed #tag or @mention the draft currently ends on, which is what
+ * the autofill list offers to finish. Typing the marker on its own offers
+ * everything ("@" lists players, "#" lists tags).
+ */
+export function trailingQuery(text: string): TagQuery | null {
+  const match = /(?:^|\s)([#@])([A-Za-z0-9_]*)$/.exec(text);
+  if (!match) return null;
+  return { kind: match[1] === "#" ? "hashtag" : "mention", query: match[2] };
+}
+
+/** Finishes the half-typed tag at the end of the draft with a chosen one. */
+export function completeTag(text: string, tag: string, maxLength = 70): string {
+  const match = /(?:^|\s)([#@])([A-Za-z0-9_]*)$/.exec(text);
+  if (!match) return insertTag(text, tag, maxLength);
+
+  const clean = tag.trim();
+  if (!clean) return text;
+  if (!hasTag(text, clean) && countTags(text) >= MAX_TAGS) return text;
+
+  const head = text.slice(0, match.index);
+  const next = head ? `${head} ${clean}` : clean;
+  return next.length <= maxLength ? next : text;
+}

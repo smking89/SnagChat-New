@@ -584,8 +584,9 @@ export function SquadScreen({
       {confirmDelete ? (
         <ConfirmSheet
           title={`Delete ${squad.name}?`}
-          body="The squad, its roster and every post in the gallery are removed. This cannot be undone in this preview."
+          body="This removes the squad, its roster and every post in its gallery for everyone, and clears any pending invites. Only the owner can do this, and it cannot be undone."
           confirmLabel="Delete squad"
+          tone="danger"
           onConfirm={() => {
             setConfirmDelete(false);
             onDeleteSquad();

@@ -1,131 +1,106 @@
 import { useEffect, useState } from "react";
 
 /**
- * An uploaded MP4 is far too big for localStorage, so clips are kept in
- * IndexedDB as blobs and handed back as object URLs. Where IndexedDB is not
- * available (some private windows, `file://` origins) the clip still plays for
- * the session and the post keeps its poster frame after a reload.
+ * Uploaded MP4s are far too big for localStorage, so they live in IndexedDB
+ * under a small key. Profiles and posts only store that key, which keeps the
+ * persisted state small while the clip itself still survives a reload.
  */
-const DB_NAME = "snagchat-clips";
+const DB_NAME = "snagchat-media";
 const STORE = "clips";
-const DB_VERSION = 1;
+const VERSION = 1;
 
-const sessionClips = new Map<string, Blob>();
-const objectUrls = new Map<string, string>();
+let dbPromise: Promise<IDBDatabase | null> | null = null;
 
-function openDatabase(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+function openDb(): Promise<IDBDatabase | null> {
+  if (dbPromise) return dbPromise;
+
+  dbPromise = new Promise((resolve) => {
     if (typeof indexedDB === "undefined") {
-      reject(new Error("indexedDB unavailable"));
+      resolve(null);
       return;
     }
 
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    let request: IDBOpenDBRequest;
+    try {
+      request = indexedDB.open(DB_NAME, VERSION);
+    } catch {
+      resolve(null);
+      return;
+    }
+
     request.onupgradeneeded = () => {
-      const database = request.result;
-      if (!database.objectStoreNames.contains(STORE)) database.createObjectStore(STORE);
+      const db = request.result;
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
     };
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error("clip database unavailable"));
+    request.onerror = () => resolve(null);
+  });
+
+  return dbPromise;
+}
+
+/** Stores a clip and resolves with the key to remember it by. */
+export async function saveClip(file: Blob): Promise<string | undefined> {
+  const db = await openDb();
+  if (!db) return undefined;
+
+  const key = `clip-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+  return await new Promise<string | undefined>((resolve) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).put(file, key);
+    tx.oncomplete = () => resolve(key);
+    tx.onerror = () => resolve(undefined);
+    tx.onabort = () => resolve(undefined);
   });
 }
 
-/** Saves a picked clip and returns the key a post stores. */
-export async function saveClip(blob: Blob): Promise<string> {
-  const id = `clip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  sessionClips.set(id, blob);
+export async function readClip(key: string): Promise<Blob | undefined> {
+  const db = await openDb();
+  if (!db) return undefined;
 
-  try {
-    const database = await openDatabase();
-    await new Promise<void>((resolve, reject) => {
-      const transaction = database.transaction(STORE, "readwrite");
-      transaction.objectStore(STORE).put(blob, id);
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error ?? new Error("clip write failed"));
-    });
-    database.close();
-  } catch {
-    // Session-only: the poster covers the post after a reload.
-  }
-
-  return id;
+  return await new Promise<Blob | undefined>((resolve) => {
+    const tx = db.transaction(STORE, "readonly");
+    const request = tx.objectStore(STORE).get(key);
+    request.onsuccess = () => resolve(request.result instanceof Blob ? request.result : undefined);
+    request.onerror = () => resolve(undefined);
+  });
 }
 
-async function readClip(id: string): Promise<Blob | null> {
-  try {
-    const database = await openDatabase();
-    const blob = await new Promise<Blob | null>((resolve, reject) => {
-      const transaction = database.transaction(STORE, "readonly");
-      const request = transaction.objectStore(STORE).get(id);
-      request.onsuccess = () => resolve((request.result as Blob | undefined) ?? null);
-      request.onerror = () => reject(request.error ?? new Error("clip read failed"));
-    });
-    database.close();
-    return blob;
-  } catch {
-    return null;
-  }
-}
+const urlCache = new Map<string, string>();
 
-/** Playable URL for a stored clip, or null while it is still being read. */
-export async function clipUrl(id: string): Promise<string | null> {
-  const cached = objectUrls.get(id);
-  if (cached) return cached;
-
-  const blob = sessionClips.get(id) ?? (await readClip(id));
-  if (!blob) return null;
-
-  const url = URL.createObjectURL(blob);
-  objectUrls.set(id, url);
-  return url;
-}
-
-export async function deleteClip(id: string): Promise<void> {
-  sessionClips.delete(id);
-
-  const url = objectUrls.get(id);
-  if (url) {
-    URL.revokeObjectURL(url);
-    objectUrls.delete(id);
-  }
-
-  try {
-    const database = await openDatabase();
-    await new Promise<void>((resolve, reject) => {
-      const transaction = database.transaction(STORE, "readwrite");
-      transaction.objectStore(STORE).delete(id);
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error ?? new Error("clip delete failed"));
-    });
-    database.close();
-  } catch {
-    // Nothing to clean up when the clip only ever lived in this session.
-  }
-}
-
-/** Resolves the clip behind a post, so cards can upgrade from poster to video. */
-export function useClipUrl(clipId?: string): string | null {
-  const [url, setUrl] = useState<string | null>(null);
+/**
+ * Resolves a stored clip key to a blob URL for playback. Cached per key so a
+ * feed of cards does not create a new object URL on every render.
+ */
+export function useClipUrl(key?: string): string | null {
+  const [url, setUrl] = useState<string | null>(() => (key ? urlCache.get(key) ?? null : null));
 
   useEffect(() => {
-    if (!clipId) {
+    if (!key) {
       setUrl(null);
       return;
     }
 
-    let live = true;
-    clipUrl(clipId)
-      .then((next) => {
-        if (live) setUrl(next);
-      })
-      .catch(() => {
-        if (live) setUrl(null);
-      });
+    const cached = urlCache.get(key);
+    if (cached) {
+      setUrl(cached);
+      return;
+    }
+
+    let active = true;
+
+    void readClip(key).then((blob) => {
+      if (!blob || !active) return;
+      const objectUrl = URL.createObjectURL(blob);
+      urlCache.set(key, objectUrl);
+      setUrl(objectUrl);
+    });
 
     return () => {
-      live = false;
+      active = false;
     };
-  }, [clipId]);
+  }, [key]);
 
   return url;
 }
