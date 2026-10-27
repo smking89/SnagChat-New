@@ -257,6 +257,16 @@ export default function App() {
     pushScreen({ kind: "profile", playerId: findPlayerId(playerIdOrHandle) });
   };
 
+  /** Tapping a #hashtag anywhere drops you on the feed, searching that tag. */
+  const searchTag = (value: string) => {
+    setStack([]);
+    setActiveTab("home");
+    setSearchOpen(true);
+    setFilter("For You");
+    setQuery(`#${value}`);
+    requestAnimationFrame(scrollToFeed);
+  };
+
   /** Shared links land on the post or profile they point at, once. */
   useEffect(() => {
     if (!session || !deepLink || handledLink.current) return;
@@ -826,6 +836,8 @@ export default function App() {
                     onOpenProfile={openProfile}
                     onToggleLike={(item) => toggleLike(item.id)}
                     onToggleSave={(item) => toggleSave(item.id)}
+                    onHashtag={searchTag}
+                    onMention={openProfile}
                   />
                   ))}
                 </div>
@@ -988,6 +1000,8 @@ export default function App() {
               reported={Boolean(reports[snag.id])}
               onOpenProfile={() => pushScreen({ kind: "profile", playerId: author.id })}
               onAddComment={(text) => addComment(snag.id, text)}
+              onHashtag={searchTag}
+              onMention={openProfile}
               onClose={popScreen}
             />
           );

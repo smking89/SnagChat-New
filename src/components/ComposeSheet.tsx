@@ -2,9 +2,11 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import { GAME_PICKS, OTHER_GAME } from "../data/games";
 import { COVER_PRESETS, type SnagCategory, type SnagDraft } from "../data/snags";
 import { fileToCover, UPLOAD_HINTS, type CoverUpload } from "../lib/imageUpload";
+import { tagOverflow } from "../lib/tags";
 import { GamePicker } from "./GamePicker";
 import { Icon } from "./Icon";
 import { Sheet } from "./Sheet";
+import { TagComposer } from "./TagComposer";
 
 const COMPOSE_CATEGORIES: SnagCategory[] = ["Clips", "Loadouts", "Screenshots", "Squad Galleries"];
 
@@ -29,7 +31,7 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
   const usingUpload = useUpload && upload !== null;
   const cover = usingUpload && upload ? upload : preset;
   const postingGame = game === OTHER_GAME ? customGame.trim() : game;
-  const canPost = title.trim().length > 0 && postingGame.length > 0;
+  const canPost = title.trim().length > 0 && postingGame.length > 0 && tagOverflow(title) === 0;
 
   const handleCoverFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -217,6 +219,8 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
           placeholder="Give the snag a name"
           className="mt-2 h-12 w-full rounded-xl border border-line bg-white px-3 text-[13px] text-ink outline-none transition placeholder:text-faint focus:border-brand focus:ring-4 focus:ring-brand/10"
         />
+
+        <TagComposer text={title} onChange={setTitle} game={postingGame} />
 
         <p className="mt-5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#4d535c]">Game</p>
         <p className="mt-1.5 text-[10.5px] leading-relaxed text-muted">

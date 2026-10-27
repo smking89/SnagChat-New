@@ -4,8 +4,9 @@ import type { Snag } from "../data/snags";
 import { useCardBounce } from "../lib/cardBounce";
 import { Avatar } from "./Avatar";
 import { CountUp } from "./CountUp";
-import { GameChip } from "./GameLogo";
+import { GameTag } from "./GameLogo";
 import { Icon } from "./Icon";
+import { RichText } from "./RichText";
 
 type SnagCardProps = {
   snag: Snag;
@@ -20,6 +21,10 @@ type SnagCardProps = {
   onOpenProfile: (creator: string) => void;
   onToggleLike: (snag: Snag) => void;
   onToggleSave: (snag: Snag) => void;
+  /** Tapping a #hashtag in the title searches the feed for it. */
+  onHashtag?: (value: string) => void;
+  /** Tapping an @mention opens that player. */
+  onMention?: (handle: string) => void;
 };
 
 const LONG_PRESS_MS = 480;
@@ -45,6 +50,8 @@ export function SnagCard({
   onOpenProfile,
   onToggleLike,
   onToggleSave,
+  onHashtag,
+  onMention,
 }: SnagCardProps) {
   const timer = useRef<number | null>(null);
   const longPressed = useRef(false);
@@ -210,7 +217,7 @@ export function SnagCard({
 
       <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10">
         <span className="mb-2 flex flex-wrap items-center gap-1.5">
-          <GameChip game={snag.game} />
+          <GameTag game={snag.game} height={22} className="max-w-[96px]" />
           {snag.duration ? (
             <span className="rounded-lg bg-[#080a0e]/60 px-2 py-1.5 text-[10.5px] font-bold leading-none tracking-[0.04em] text-white backdrop-blur-md">
               {snag.duration}
@@ -218,7 +225,13 @@ export function SnagCard({
           ) : null}
         </span>
         <p className="text-[12.5px] font-bold leading-[1.22] tracking-[-0.01em] text-white sm:text-[13.5px]">
-          <span className="line-clamp-2">{snag.title}</span>
+          <RichText
+            text={snag.title}
+            className="line-clamp-2"
+            tagClassName="text-[#eab8fb]"
+            onHashtag={onHashtag}
+            onMention={onMention}
+          />
         </p>
         <div className="mt-2 flex items-center justify-between gap-2">
           {snag.sponsoredBy ? (

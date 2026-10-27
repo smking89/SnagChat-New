@@ -5,8 +5,9 @@ import type { Snag } from "../data/snags";
 import { formatRelative } from "../data/threads";
 import { Avatar } from "./Avatar";
 import { CountUp } from "./CountUp";
-import { GameChip } from "./GameLogo";
+import { GameTag } from "./GameLogo";
 import { Icon } from "./Icon";
+import { RichText } from "./RichText";
 import { Screen, ScreenHeader } from "./Screen";
 
 export type CommentView = {
@@ -34,6 +35,10 @@ type SnagScreenProps = {
   reported?: boolean;
   onOpenProfile: () => void;
   onAddComment: (text: string) => void;
+  /** Tapping a #hashtag searches the feed for it. */
+  onHashtag?: (value: string) => void;
+  /** Tapping an @mention opens that player. */
+  onMention?: (handle: string) => void;
   onClose: () => void;
 };
 
@@ -54,6 +59,8 @@ export function SnagScreen({
   reported = false,
   onOpenProfile,
   onAddComment,
+  onHashtag,
+  onMention,
   onClose,
 }: SnagScreenProps) {
   const [draft, setDraft] = useState("");
@@ -184,7 +191,7 @@ export function SnagScreen({
                     Ad
                   </span>
                 ) : null}
-                <GameChip game={snag.game} />
+                <GameTag game={snag.game} height={20} tone="onLight" className="max-w-[72px]" />
                 <span className="rounded-md bg-surface px-2 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-[#4d535c]">
                   {snag.category}
                 </span>
@@ -195,7 +202,7 @@ export function SnagScreen({
               id="snag-title"
               className="mt-4 font-display text-[20px] font-extrabold leading-[1.15] tracking-[-0.035em]"
             >
-              {snag.title}
+              <RichText text={snag.title} onHashtag={onHashtag} onMention={onMention} />
             </h1>
 
             {snag.sponsoredBy ? (
@@ -286,7 +293,9 @@ export function SnagScreen({
                             @{comment.author.handle} · {formatRelative(comment.at)}
                           </span>
                         </p>
-                        <p className="mt-1 text-[12.5px] leading-relaxed text-[#3d424a]">{comment.text}</p>
+                        <p className="mt-1 text-[12.5px] leading-relaxed text-[#3d424a]">
+                          <RichText text={comment.text} onHashtag={onHashtag} onMention={onMention} />
+                        </p>
                       </div>
                     </li>
                   ))}

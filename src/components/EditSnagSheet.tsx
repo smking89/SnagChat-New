@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { OTHER_GAME, isCatalogGame } from "../data/games";
 import type { Snag } from "../data/snags";
+import { tagOverflow } from "../lib/tags";
 import { GamePicker } from "./GamePicker";
 import { Icon } from "./Icon";
 import { Sheet } from "./Sheet";
+import { TagComposer } from "./TagComposer";
 
 type EditSnagSheetProps = {
   snag: Snag;
@@ -21,7 +23,7 @@ export function EditSnagSheet({ snag, onClose, onSave }: EditSnagSheetProps) {
   const save = (event: FormEvent) => {
     event.preventDefault();
     const nextTitle = title.trim();
-    if (!nextTitle || !nextGame) return;
+    if (!nextTitle || !nextGame || tagOverflow(nextTitle) > 0) return;
     onSave({ title: nextTitle, game: nextGame });
   };
 
@@ -69,6 +71,8 @@ export function EditSnagSheet({ snag, onClose, onSave }: EditSnagSheetProps) {
           className="mt-2 h-12 w-full rounded-xl border border-line px-3 text-[13px] outline-none focus:border-brand focus:ring-4 focus:ring-brand/10"
         />
 
+        <TagComposer text={title} onChange={setTitle} game={nextGame} />
+
         <p className="mt-4 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#4d535c]">Game</p>
         <div className="mt-2">
           <GamePicker
@@ -81,7 +85,7 @@ export function EditSnagSheet({ snag, onClose, onSave }: EditSnagSheetProps) {
 
         <button
           type="submit"
-          disabled={!title.trim() || !nextGame}
+          disabled={!title.trim() || !nextGame || tagOverflow(title) > 0}
           className="mt-6 h-12 w-full rounded-xl bg-brand text-[13px] font-semibold text-white transition-colors hover:bg-brand-deep disabled:cursor-not-allowed disabled:bg-[#d9c6e6]"
         >
           Save changes

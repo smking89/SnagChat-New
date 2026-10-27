@@ -54,7 +54,7 @@ export const COVER_PRESETS: { id: string; label: string; image: string; aspect: 
 export const SEED_SNAGS: Snag[] = [
   {
     id: "snag-01",
-    title: "Night run through the neon district",
+    title: "Night run through the neon district #cyberpunk #clip",
     game: "Cyberpunk 2077",
     category: "Clips",
     creator: "MasonR",
@@ -88,7 +88,7 @@ export const SEED_SNAGS: Snag[] = [
   },
   {
     id: "snag-03",
-    title: "Last light on the ridge",
+    title: "Last light on the ridge #dayz @kirav",
     game: "DayZ",
     category: "Screenshots",
     creator: "KiraV",
@@ -109,7 +109,7 @@ export const SEED_SNAGS: Snag[] = [
   },
   {
     id: "snag-05",
-    title: "Empty road, 300 clicks to go",
+    title: "Empty road, 300 clicks to go #dayz #screenshot",
     game: "DayZ",
     category: "Screenshots",
     creator: "Drew",
@@ -183,7 +183,7 @@ export const SEED_SNAGS: Snag[] = [
   },
   {
     id: "snag-12",
-    title: "Couch co-op at 2am",
+    title: "Couch co-op at 2am #squad @otis",
     game: "Rocket League",
     category: "Squad Galleries",
     creator: "Otis",
@@ -194,7 +194,7 @@ export const SEED_SNAGS: Snag[] = [
   },
   {
     id: "snag-13",
-    title: "Rig check: twin 4080s",
+    title: "Rig check: twin 4080s #rust #loadout",
     game: "Rust",
     category: "Loadouts",
     creator: "NorthLoop",

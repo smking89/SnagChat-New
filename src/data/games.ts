@@ -1,35 +1,37 @@
 export type Game = {
   /** Stored on a snag and used as the display name. */
   name: string;
-  /** Official logo. Steam titles load it from the publisher's own store CDN. */
+  /**
+   * Official logo, bundled locally and cropped to the artwork's own edges so it
+   * can sit straight on a post without a backing plate. Logos belong to their
+   * publishers — swap in licensed artwork here before shipping commercially.
+   */
   logo?: string;
   /** Other names players use for the same title, so older posts still resolve. */
   aliases?: string[];
 };
 
-const steamLogo = (appId: number) => `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/logo.png`;
-
-/**
- * The game catalogue. Logos belong to their publishers and are loaded from the
- * publisher's store CDN rather than bundled with the app, so swap in licensed
- * artwork here before shipping the posts commercially.
- */
+/** The game catalogue. Files live in public/games/<slug>.png. */
 export const GAMES: Game[] = [
-  { name: "Rust", logo: steamLogo(252490), aliases: ["rust pc", "rust console"] },
+  { name: "Rust", logo: "/games/rust.png", aliases: ["rust pc", "rust console"] },
   { name: "Minecraft", logo: "/games/minecraft.png", aliases: ["minecraft java", "minecraft bedrock"] },
-  { name: "ARK: Survival Ascended", logo: steamLogo(2399830), aliases: ["ark", "ark ascended", "ark survival", "ark survival evolved"] },
-  { name: "DayZ", logo: steamLogo(221100) },
-  { name: "Call of Duty", logo: steamLogo(1938090), aliases: ["cod", "warzone", "call of duty warzone"] },
-  { name: "Palworld", logo: steamLogo(1623730) },
-  { name: "Conan Exiles", logo: steamLogo(440900), aliases: ["conan"] },
-  { name: "Cyberpunk 2077", logo: steamLogo(1091500), aliases: ["cyberpunk"] },
-  { name: "Apex Legends", logo: steamLogo(1172470), aliases: ["apex"] },
-  { name: "Elden Ring", logo: steamLogo(1245620) },
-  { name: "Rocket League", logo: steamLogo(252950) },
-  { name: "Street Fighter 6", logo: steamLogo(1364780), aliases: ["sf6", "street fighter"] },
-  { name: "Skyrim", logo: steamLogo(489830), aliases: ["elder scrolls", "the elder scrolls v skyrim"] },
-  { name: "Squad", logo: steamLogo(393380) },
-  { name: "Battlefield", logo: steamLogo(1517290), aliases: ["battlefield 2042", "bf2042"] },
+  {
+    name: "ARK: Survival Ascended",
+    logo: "/games/ark.png",
+    aliases: ["ark", "ark ascended", "ark survival", "ark survival evolved"],
+  },
+  { name: "DayZ", logo: "/games/dayz.png" },
+  { name: "Call of Duty", logo: "/games/call-of-duty.png", aliases: ["cod", "warzone", "call of duty warzone"] },
+  { name: "Palworld", logo: "/games/palworld.png" },
+  { name: "Conan Exiles", logo: "/games/conan-exiles.png", aliases: ["conan"] },
+  { name: "Cyberpunk 2077", logo: "/games/cyberpunk-2077.png", aliases: ["cyberpunk"] },
+  { name: "Apex Legends", logo: "/games/apex-legends.png", aliases: ["apex"] },
+  { name: "Elden Ring", logo: "/games/elden-ring.png" },
+  { name: "Rocket League", logo: "/games/rocket-league.png" },
+  { name: "Street Fighter 6", logo: "/games/street-fighter-6.png", aliases: ["sf6", "street fighter"] },
+  { name: "Skyrim", logo: "/games/skyrim.png", aliases: ["elder scrolls", "the elder scrolls v skyrim"] },
+  { name: "Squad", logo: "/games/squad.png" },
+  { name: "Battlefield", logo: "/games/battlefield.png", aliases: ["battlefield 2042", "bf2042"] },
 ];
 
 /** The catch-all for any title that is not in the list. */
@@ -64,4 +66,18 @@ export function gameLogo(name: string): string | undefined {
 /** True when the name is one of the catalogued titles, not free text. */
 export function isCatalogGame(name: string): boolean {
   return GAMES.some((game) => game.name === name);
+}
+
+/**
+ * The hashtag a post about this game should carry: the studio's own short name
+ * where there is one ("ARK: Survival Ascended" → "#ark"), a slug otherwise.
+ */
+export function gameHashtag(name: string): string | undefined {
+  const trimmed = name.trim();
+  if (!trimmed) return undefined;
+
+  const game = findGame(trimmed);
+  const source = game ? game.name.split(":")[0] : trimmed;
+  const slug = source.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return slug.length >= 2 ? slug : undefined;
 }
