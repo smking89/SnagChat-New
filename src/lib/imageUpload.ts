@@ -1,3 +1,5 @@
+import { CLIP_LIMITS, CLIP_POSTER_FALLBACK, checkClipFile, checkClipProbe, formatClipLength } from "./clipLimits";
+
 type Target = { width: number; height: number };
 
 const MAX_BYTES = 12 * 1024 * 1024;
@@ -208,4 +210,131 @@ export async function fileToDataUrl(file: File, target: Target): Promise<string>
   }
 
   return canvas.toDataURL("image/jpeg", 0.82);
+}
+
+export type ClipUpload = {
+  /** Poster frame as a data URL, so the post still renders without the clip. */
+  image: string;
+  aspect: string;
+  width: number;
+  height: number;
+  /** Rounded length in seconds. */
+  seconds: number;
+  /** "1:07" for the badge on the card. */
+  duration: string;
+  bytes: number;
+  /** Blob URL for the picked file, played while the composer is open. */
+  previewUrl: string;
+};
+
+/** Reads the clip's header so its length and resolution can be checked. */
+function loadVideo(file: File): Promise<{ video: HTMLVideoElement; url: string }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    let settled = false;
+
+    const timer = window.setTimeout(() => fail(), 12000);
+
+    const cleanup = () => {
+      video.onloadedmetadata = null;
+      video.onerror = null;
+      window.clearTimeout(timer);
+    };
+
+    function fail() {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      URL.revokeObjectURL(url);
+      reject(new Error("That clip could not be read. Try another MP4."));
+    }
+
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+    video.onloadedmetadata = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve({ video, url });
+    };
+    video.onerror = () => fail();
+    video.src = url;
+  });
+}
+
+/** Grabs one frame so the post has a cover before the video itself loads. */
+async function grabPoster(video: HTMLVideoElement): Promise<string> {
+  const width = video.videoWidth;
+  const height = video.videoHeight;
+  const scale = Math.min(1, 720 / Math.max(width, height));
+
+  const at = Math.min(CLIP_LIMITS.posterSeconds, Math.max(0, video.duration / 2));
+  if (at > 0 && Number.isFinite(at)) {
+    await new Promise<void>((resolve) => {
+      const done = () => {
+        video.removeEventListener("seeked", done);
+        resolve();
+      };
+      video.addEventListener("seeked", done);
+      try {
+        video.currentTime = at;
+      } catch {
+        done();
+      }
+      // A codec that never reports the seek still gets a frame at the start.
+      window.setTimeout(done, 2000);
+    });
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("This browser cannot process clips.");
+
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.8);
+}
+
+/**
+ * An uploaded clip. The length and resolution come off the file itself, so the
+ * composer can hold the upload to the clip policy before anything is posted.
+ */
+export async function fileToClip(file: File): Promise<ClipUpload> {
+  const fileCheck = checkClipFile({ name: file.name, type: file.type, bytes: file.size });
+  if (!fileCheck.ok) throw new Error(fileCheck.reason);
+
+  const { video, url } = await loadVideo(file);
+  const probe = { duration: video.duration, width: video.videoWidth, height: video.videoHeight };
+  const verdict = checkClipProbe(probe);
+
+  if (!verdict.ok) {
+    URL.revokeObjectURL(url);
+    throw new Error(verdict.reason);
+  }
+
+  let image: string;
+  try {
+    image = await grabPoster(video);
+  } catch {
+    image = CLIP_POSTER_FALLBACK;
+  }
+
+  // The decoder has done its job; the clip itself is stored separately.
+  video.removeAttribute("src");
+  video.load();
+
+  return {
+    image,
+    aspect: aspectFor(probe.width, probe.height),
+    width: probe.width,
+    height: probe.height,
+    seconds: Math.max(1, Math.round(probe.duration)),
+    duration: formatClipLength(probe.duration),
+    bytes: file.size,
+    previewUrl: url,
+  };
 }

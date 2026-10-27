@@ -2,16 +2,16 @@ import { CATEGORIES, type FeedFilter } from "../data/snags";
 
 type FilterRailProps = {
   active: FeedFilter;
-  top: number;
   onChange: (filter: FeedFilter) => void;
 };
 
-export function FilterRail({ active, top, onChange }: FilterRailProps) {
+/**
+ * The tab rail is pinned to the very top of the screen, so scrolling never takes
+ * the categories away; the header above it scrolls off instead.
+ */
+export function FilterRail({ active, onChange }: FilterRailProps) {
   return (
-    <div
-      className="sticky z-30 -mx-4 border-b border-line/80 bg-white/92 px-4 backdrop-blur-xl sm:mx-0 sm:px-0"
-      style={{ top }}
-    >
+    <div className="sticky top-0 z-30 -mx-4 border-b border-line/80 bg-white/92 px-4 backdrop-blur-xl sm:mx-0 sm:px-0">
       <div
         role="group"
         aria-label="Filter snags"

@@ -1,4 +1,4 @@
-export type SnagCategory = "Clips" | "Loadouts" | "Screenshots" | "Squad Galleries";
+export type SnagCategory = "Clips" | "Loadouts" | "Skins" | "Screenshots" | "Squad Galleries";
 
 export type Snag = {
   id: string;
@@ -13,6 +13,8 @@ export type Snag = {
   /** CSS aspect-ratio value, e.g. "3 / 4.2" */
   aspect: string;
   duration?: string;
+  /** Key for an uploaded MP4 in the clip store. `image` holds its poster frame. */
+  clipId?: string;
   /** Set on sponsored posts. Only these show the report-ad action. */
   sponsoredBy?: string;
 };
@@ -24,10 +26,11 @@ export type SnagDraft = {
   image: string;
   aspect: string;
   duration?: string;
+  clipId?: string;
   squadId?: string;
 };
 
-export const CATEGORIES = ["For You", "Clips", "Loadouts", "Screenshots", "Squad Galleries"] as const;
+export const CATEGORIES = ["For You", "Clips", "Loadouts", "Skins", "Screenshots", "Squad Galleries"] as const;
 
 export type FeedFilter = (typeof CATEGORIES)[number];
 
@@ -223,6 +226,58 @@ export const SEED_SNAGS: Snag[] = [
     image: "/snags/summit.jpg",
     aspect: "1 / 1",
     squadId: "drift-crew",
+  },
+  {
+    id: "snag-skin-01",
+    title: "Frostbite wrap on the AK #skin #rust",
+    game: "Rust",
+    category: "Skins",
+    creator: "Sable",
+    postedAt: "5h",
+    image: "/snags/keyboard.jpg",
+    aspect: "4 / 3",
+  },
+  {
+    id: "snag-skin-02",
+    title: "Wraith skin, purple hour #skin #cod",
+    game: "Call of Duty",
+    category: "Skins",
+    creator: "Nyx",
+    creatorId: "nyx",
+    postedAt: "7h",
+    image: "/snags/controller.jpg",
+    aspect: "4 / 3.2",
+  },
+  {
+    id: "snag-skin-03",
+    title: "Ghillie set after the wipe #skin #dayz",
+    game: "DayZ",
+    category: "Skins",
+    creator: "Wren",
+    postedAt: "10h",
+    image: "/snags/castle-fog.jpg",
+    aspect: "3 / 4.6",
+  },
+  {
+    id: "snag-skin-04",
+    title: "Frost dragon mount at dusk #skin",
+    game: "Palworld",
+    category: "Skins",
+    creator: "Mira",
+    postedAt: "1d",
+    image: "/snags/summit.jpg",
+    aspect: "1 / 1",
+  },
+  {
+    id: "snag-skin-05",
+    title: "Neon chassis, fully kitted #skin #loadout",
+    game: "Cyberpunk 2077",
+    category: "Skins",
+    creator: "MasonR",
+    postedAt: "2d",
+    image: "/snags/rig.jpg",
+    aspect: "1 / 1",
+    sponsoredBy: "NorthLoop PC",
   },
 ];
 

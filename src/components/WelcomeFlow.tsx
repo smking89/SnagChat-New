@@ -23,6 +23,7 @@ const FILTER_BLURB: Record<FeedFilter, string> = {
   "For You": "Everything, ranked for you",
   Clips: "Gameplay moments worth a rewatch",
   Loadouts: "Builds, guns and gear",
+  Skins: "Character, weapon and vehicle skins",
   Screenshots: "Scenery and photo mode",
   "Squad Galleries": "Posts that live inside a squad",
 };

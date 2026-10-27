@@ -38,7 +38,8 @@ export function TopBar({
   onOpenNotifications,
 }: TopBarProps) {
   return (
-    <header ref={rootRef} className="sticky top-0 z-40 border-b border-line/80 bg-white/92 backdrop-blur-xl">
+    // Not sticky: the tab rail below owns the top of the screen.
+    <header ref={rootRef} className="relative z-40 border-b border-line/80 bg-white/92 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1080px] items-center gap-3 px-4 sm:px-6">
         <button
           type="button"

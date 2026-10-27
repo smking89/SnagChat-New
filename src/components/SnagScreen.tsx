@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from "react";
 import type { ReportMode } from "./ReportSheet";
+import { useClipUrl } from "../lib/clipStore";
 import { formatCount, type Player } from "../data/players";
 import type { Snag } from "../data/snags";
 import { formatRelative } from "../data/threads";
@@ -67,6 +68,7 @@ export function SnagScreen({
   const [menuOpen, setMenuOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const commentsRef = useRef<HTMLDivElement>(null);
+  const clip = useClipUrl(snag.clipId);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -155,13 +157,25 @@ export function SnagScreen({
 
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[720px]">
-          <img
-            src={snag.image}
-            alt=""
-            style={{ aspectRatio: snag.aspect }}
-            className="w-full bg-surface object-cover"
-            draggable={false}
-          />
+          {clip ? (
+            <video
+              src={clip}
+              poster={snag.image}
+              controls
+              playsInline
+              preload="metadata"
+              style={{ aspectRatio: snag.aspect }}
+              className="w-full bg-ink object-cover"
+            />
+          ) : (
+            <img
+              src={snag.image}
+              alt=""
+              style={{ aspectRatio: snag.aspect }}
+              className="w-full bg-surface object-cover"
+              draggable={false}
+            />
+          )}
 
           <div className="px-4 pb-8 pt-4">
             <div className="flex items-center gap-3">

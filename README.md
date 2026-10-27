@@ -19,9 +19,11 @@ Stack: Vite, React 19, TypeScript, Tailwind CSS v4. Fonts (Inter, Plus Jakarta S
 ## What's here
 
 - **Feed** — full-bleed masonry, 2 columns on mobile, 3 on desktop, 12px gap, 16px card radius.
-- **Filters** — sticky category rail (For You, Clips, Loadouts, Screenshots, Squad Galleries) with black-and-white selected state. On phones and tablets a swipe across the feed moves one tab left or right and the grid slides in from that side; the gesture is off above 1023px, stops at the ends of the rail, and swipes that start on the rail's own scroller are left to it (`useSwipe` in `src/lib/swipe.ts`, `nextCategory` in `src/data/snags.ts`).
+- **Filters** — the tab rail (For You, Clips, Loadouts, **Skins**, Screenshots, Squad Galleries) is pinned to the very top of the screen, so the categories never scroll away and the header above them scrolls off instead, coming back when you return to the top. Selected state is black-and-white. On phones and tablets a swipe across the feed still moves one tab left or right and the grid slides in from that side — off above 1023px, stops at the ends of the rail, drags starting on the rail's own scroller are left to it, and drags starting on a card belong to that card (`useSwipe` in `src/lib/swipe.ts`, `nextCategory` in `src/data/snags.ts`).
 - **Touch handling** — cards and controls opt out of the browser's double-tap zoom (`touch-action: manipulation`), so a double tap likes the post instead of zooming the page, and the page clips horizontal overflow (`overflow-x: clip`) so scaled cards and the feed's slide can never pan the layout sideways. Pinch zoom still works.
 - **Search** — header search filters snags by title, game, creator or category, and a tapped hashtag drops you on the feed searching that tag.
+- **Card swipe actions** — drag a card right to like it and left to save it (`src/lib/cardSwipe.ts`). The card follows the finger, a Like or Save pill slides in to show what the release will do, and it springs back afterwards; a mostly vertical drag is handed straight back to the page so scrolling still works, and anything under 48px counts as a tap. Cards carry `data-swipe-ignore`, so the tab swipe can never fire at the same moment.
+- **Skins** — the **Skins** tab is where players post character, weapon and vehicle skins. Five seeded posts fill it, the composer offers Skins next to Clips, Loadouts, Screenshots and Squad Galleries, and the welcome flow describes it like the rest.
 - **Snag view** — tap a card to open the snag: author, game logo, category, and like / comment / save / share counts.
 - **Game logos** — every post carries the game's own artwork from `src/data/games.ts`. The composer offers Rust, Minecraft, ARK: Survival Ascended, DayZ, Call of Duty, Palworld and Conan Exiles, plus **Other** for a free-text title; posts without a catalogued logo fall back to the name so nothing looks blank. Each logo is bundled in `public/games/<slug>.png`, cropped to the artwork's own edges, so it fills the height it is given (22px on a feed card, 20px in the snag view, 18px in the picker) instead of hiding inside transparent padding. Nothing sits behind them: the logos are white artwork, so on light surfaces they are darkened with a `brightness()` filter rather than put on a black plate, and on a post they sit on the card's own scrim with a drop shadow. Swap in licensed artwork in those files before shipping commercially.
 - **Hashtags and mentions** — post text is parsed by `src/lib/tags.ts`, so `#hashtags` and `@mentions` render as tappable purple text on cards, in the snag view and in comments (`src/components/RichText.tsx`): a hashtag opens the feed filtered to that tag, a mention opens that player's profile. A post may carry **four** tags in total — hashtags and mentions share the same budget — and the composer counts them (`2 / 4`), suggests the selected game's own hashtag, a few popular ones and players you can mention, and blocks posting while the text is over the limit. Tags are only read when they start a word, so an email address stays plain text.
@@ -53,7 +55,7 @@ Stack: Vite, React 19, TypeScript, Tailwind CSS v4. Fonts (Inter, Plus Jakarta S
 
 ## Clip uploads
 
-This build accepts still images and GIFs only; there is no video pipeline yet. The limits below are the intended policy for when clips land, and they are chosen to fit the current storage model (`localStorage`, roughly 5 MB per origin) and a thumbnail-first feed:
+Stills and GIFs upload as before, and **MP4 clips** can be uploaded from the same control, held to the policy below (`src/lib/clipLimits.ts`). A file is checked for format and size before the browser reads it, then for length and resolution once its header is read, and the composer refuses it with the exact reason rather than posting something unexpected:
 
 | Setting | Limit | Why |
 | --- | --- | --- |
@@ -65,7 +67,7 @@ This build accepts still images and GIFs only; there is no video pipeline yet. T
 | Poster frame | 1 frame extracted at 0.5 s, stored as WebP | The feed renders the poster; the video only loads when opened. |
 | Rejection | Over-length clips are trimmed, not refused; oversized or unreadable files are refused with the reason | Players get a post instead of an error wherever a fix is possible. |
 
-The limits belong in one place — a `src/lib/clipLimits.ts` beside `src/lib/imageUpload.ts` — and the composer should state them next to the upload control the way image sizes are stated today. A real deployment moves the encode server-side and raises the caps; the client only needs to pre-check length, resolution and size before uploading.
+The numbers live in one place, `src/lib/clipLimits.ts` beside `src/lib/imageUpload.ts`, and the composer states the minimum, the maximum and the size cap next to the upload control. A clip is stored as a blob in IndexedDB (`src/lib/clipStore.ts`) because a video never fits in `localStorage`, and every post keeps a poster frame grabbed at 0.5s as its cover, so the post still reads correctly if the clip itself is missing. A real deployment moves the encode server-side and raises the caps; the client only needs to pre-check length, resolution and size before uploading.
 
 ## Accounts
 
@@ -85,13 +87,23 @@ Email registration collects the profile details itself, so it lands straight on 
 
 ## State
 
-Likes, comments, saves, follows, profile edits, posted snags, reports, notifications and DM threads persist in `localStorage` (`snagchat:*`), so they survive reloads on the same browser. There is no backend: nothing syncs between devices and no message is delivered anywhere.
+Likes, comments, saves, follows, profile edits, posted snags, reports, notifications and DM threads persist in `localStorage` (`snagchat:*`), so they survive reloads on the same browser. Uploaded clips are the exception: they are far too big for `localStorage`, so they live in IndexedDB (`snagchat-clips`) and are read back as object URLs, with the post's poster frame covering anything that cannot be read (private windows, `file://` origins). There is no backend: nothing syncs between devices and no message is delivered anywhere.
 
 Message delivery is simulated client-side: a message you send walks itself through `sending → sent → read` on timers in `src/App.tsx` (`advanceMessageStatus`) because there is no second device to read it. In a view-once thread that same simulated read is what removes the message. A real build replaces those timers with delivery receipts from the server.
 
 Account settings (`private`, `followPermission`, `invitePermission`) live on the profile record. The download export is built in `src/App.tsx` (`downloadData`) and written by `src/lib/export.ts`; it includes the account record minus `hash` and `salt`, the profile, posted snags, likes, comments, follows, squads, invites and DM threads. Deleting calls `deleteAccount` in `src/lib/auth.ts` and clears local storage.
 
 Shared links carry the deep link in the query string (`src/lib/share.ts` reads it and `?snag=` / `?player=` are stripped after use). Because posts live in that browser's storage, a link to a post you created opens that post for you, while anyone else lands on the feed — real cross-device links need the post stored on a server.
+
+## Android APK
+
+The app also ships as an Android APK. `android/` is a thin WebView wrapper around the same build: it serves the built files out of the APK's assets from `https://appassets.androidhost/` (`MainActivity.java` with `WebViewAssetLoader`) instead of `file://`, so `localStorage` and the IndexedDB clip store behave exactly as they do on the web, and muted clips are allowed to autoplay.
+
+```bash
+bash android/build-apk.sh   # web build -> APK assets -> snagchat.apk
+```
+
+The script needs JDK 17, an Android SDK with platform 34 and build-tools 34.0.0, and Gradle 8.7 — point `JAVA_HOME`, `ANDROID_HOME` and `GRADLE` at them, or let it fall back to the `.toolchain/` copy. The APK it produces is a debug build signed with the debug keystore, so it installs by sideloading; a Play release needs its own signing key.
 
 ## Assets
 

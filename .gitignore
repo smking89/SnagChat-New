@@ -4,3 +4,10 @@ dist
 .DS_Store
 *.local
 snagchat-source.zip
+# Local Android toolchain, Gradle output and the web build copied into the APK
+.toolchain
+android/.gradle
+android/build
+android/app/build
+android/local.properties
+android/app/src/main/assets

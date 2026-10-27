@@ -112,13 +112,11 @@ export default function App() {
   const [composing, setComposing] = useState(false);
   const [composeSquadId, setComposeSquadId] = useState<string | null>(null);
   const [editingSnag, setEditingSnag] = useState<Snag | null>(null);
-  const [headerHeight, setHeaderHeight] = useState(64);
   /** Which way the feed slides when the tab changes. */
   const [feedMotion, setFeedMotion] = useState<"left" | "right">("right");
   const [stack, setStack] = useState<ScreenState[]>([]);
   const [legalDocId, setLegalDocId] = useState<string | null>(null);
 
-  const headerRef = useRef<HTMLElement>(null);
   const feedRef = useRef<HTMLElement>(null);
   const handledLink = useRef(false);
   const [deepLink] = useState<ShareTarget>(() =>
@@ -150,18 +148,6 @@ export default function App() {
     setQuery("");
     setSearchOpen(false);
   };
-
-  useEffect(() => {
-    const element = headerRef.current;
-    if (!element) return;
-
-    const measure = () => setHeaderHeight(element.getBoundingClientRect().height);
-    measure();
-
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
 
   const snags = useMemo(
     () => [...mySnags, ...SEED_SNAGS].filter((snag) => !removedSnags.includes(snag.id)),
@@ -764,7 +750,6 @@ export default function App() {
       </a>
 
       <TopBar
-        rootRef={headerRef}
         activeTab={activeTab}
         onNavigate={navigate}
         onCreate={() => startCompose(null)}
@@ -793,9 +778,9 @@ export default function App() {
         </section>
 
         <div className="mx-auto max-w-[1080px] px-4 sm:px-6">
-          <FilterRail active={filter} top={headerHeight} onChange={selectFilter} />
+          <FilterRail active={filter} onChange={selectFilter} />
 
-          <section id="feed" ref={feedRef} aria-label="Snag feed" className="scroll-mt-[88px] pt-5">
+          <section id="feed" ref={feedRef} aria-label="Snag feed" className="scroll-mt-[62px] pt-5">
             <div className="mb-4 flex items-end justify-between gap-4">
               <div className="min-w-0">
                 <h2 className="truncate font-display text-[16.5px] font-extrabold tracking-[-0.03em] sm:text-[19px]">
@@ -804,7 +789,7 @@ export default function App() {
                 <p className="mt-1 text-[11px] text-muted">
                   {visibleSnags.length} {visibleSnags.length === 1 ? "snag" : "snags"} · tap to open, hold to
                   quick-share
-                  <span className="lg:hidden"> · swipe between tabs</span>
+                  <span className="lg:hidden"> · swipe a card to like or save</span>
                 </p>
               </div>
               {filter !== "For You" || query ? (

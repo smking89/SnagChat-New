@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { formatCount } from "../data/players";
 import type { Snag } from "../data/snags";
 import { useCardBounce } from "../lib/cardBounce";
+import { useCardSwipe } from "../lib/cardSwipe";
+import { useClipUrl } from "../lib/clipStore";
 import { Avatar } from "./Avatar";
 import { CountUp } from "./CountUp";
 import { GameTag } from "./GameLogo";
@@ -54,12 +56,25 @@ export function SnagCard({
   onMention,
 }: SnagCardProps) {
   const timer = useRef<number | null>(null);
-  const longPressed = useRef(false);
+  /** Set while another gesture (a long press or a swipe) has taken the tap. */
+  const consumed = useRef(false);
   const tapTimer = useRef<number | null>(null);
   const lastTap = useRef(0);
   const burstTimer = useRef<number | null>(null);
   const [burst, setBurst] = useState(false);
   const cardRef = useCardBounce();
+  const clip = useClipUrl(snag.clipId);
+
+  const { ref: swipeRef, hint } = useCardSwipe({
+    onLike: () => {
+      consumed.current = true;
+      if (!liked) onToggleLike(snag);
+    },
+    onSave: () => {
+      consumed.current = true;
+      if (!saved) onToggleSave(snag);
+    },
+  });
 
   const clearTimer = () => {
     if (timer.current !== null) {
@@ -92,10 +107,10 @@ export function SnagCard({
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    longPressed.current = false;
+    consumed.current = false;
     clearTimer();
     timer.current = window.setTimeout(() => {
-      longPressed.current = true;
+      consumed.current = true;
       clearTapTimer();
       onQuickShare(snag);
     }, LONG_PRESS_MS);
@@ -106,8 +121,8 @@ export function SnagCard({
    * cancels that and likes the post instead, the way a feed double tap works.
    */
   const handleClick = () => {
-    if (longPressed.current) {
-      longPressed.current = false;
+    if (consumed.current) {
+      consumed.current = false;
       return;
     }
 
@@ -132,129 +147,167 @@ export function SnagCard({
   return (
     <div
       ref={cardRef}
+      data-swipe-ignore="true"
       className="snag-card group relative mb-3 break-inside-avoid overflow-hidden rounded-2xl bg-surface shadow-[0_1px_2px_rgba(23,25,29,0.1)] transition-shadow duration-300 hover:shadow-[0_10px_26px_rgba(23,25,29,0.14)]"
     >
-      <img
-        src={snag.image}
-        alt=""
-        loading="lazy"
-        decoding="async"
-        draggable={false}
-        style={{ aspectRatio: snag.aspect }}
-        className="block w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.035]"
-      />
-
-      <button
-        type="button"
-        onPointerDown={handlePointerDown}
-        onPointerUp={clearTimer}
-        onPointerCancel={clearTimer}
-        onPointerLeave={clearTimer}
-        onClick={handleClick}
-        onContextMenu={(event) => {
-          event.preventDefault();
-          clearTimer();
-          onQuickShare(snag);
-        }}
-        aria-label={
-          snag.sponsoredBy
-            ? `${snag.title}. Ad for ${snag.sponsoredBy}, in ${snag.game}. Open post.`
-            : `${snag.title}. ${snag.game}, snagged by ${snag.creator}. Open snag. Double tap to like.`
-        }
-        className="absolute inset-0 z-0 select-none rounded-2xl [-webkit-touch-callout:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
-      />
-
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[64%] bg-gradient-to-t from-[#080a0e]/95 via-[#080a0e]/40 to-transparent"
-      />
-
-      {burst ? (
-        <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 grid place-items-center">
-          <span className="heart-burst grid place-items-center text-white drop-shadow-[0_6px_18px_rgba(0,0,0,0.45)]">
-            <Icon name="heart" size={96} strokeWidth={1.5} filled />
-          </span>
-        </span>
-      ) : null}
-
-      {snag.sponsoredBy ? (
-        <span className="pointer-events-none absolute left-2.5 top-2.5 z-10 rounded-lg bg-brand px-2 py-1.5 text-[10.5px] font-extrabold uppercase leading-none tracking-[0.1em] text-white">
-          Ad
-        </span>
-      ) : null}
-
-      <div className="absolute right-2.5 top-2.5 z-20 flex flex-col items-end gap-2">
-        <button
-          type="button"
-          onClick={() => onToggleLike(snag)}
-          aria-pressed={liked}
-          aria-label={`${liked ? "Unlike" : "Like"} ${snag.title}`}
-          className={`flex items-center gap-2 rounded-xl px-2.5 py-2 text-[12.5px] font-bold leading-none backdrop-blur-md transition-colors ${
-            liked
-              ? "bg-brand text-white"
-              : "border border-white/25 bg-[#080a0e]/60 text-white hover:bg-[#080a0e]/80"
-          }`}
-        >
-          <Icon name="heart" size={20} strokeWidth={2.3} filled={liked} />
-          <CountUp value={likeCount} format={formatCount} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onToggleSave(snag)}
-          aria-pressed={saved}
-          aria-label={`${saved ? "Remove from saved" : "Save"} ${snag.title}`}
-          className={`flex items-center gap-2 rounded-xl px-2.5 py-2 text-[12.5px] font-bold leading-none backdrop-blur-md transition-colors ${
-            saved
-              ? "bg-white text-ink"
-              : "border border-white/25 bg-[#080a0e]/60 text-white hover:bg-[#080a0e]/80"
-          }`}
-        >
-          <Icon name="bookmark" size={19} strokeWidth={2.1} filled={saved} />
-          <CountUp value={saveCount} format={formatCount} />
-        </button>
-      </div>
-
-      <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10">
-        <span className="mb-2 flex flex-wrap items-center gap-1.5">
-          <GameTag game={snag.game} height={22} className="max-w-[96px]" />
-          {snag.duration ? (
-            <span className="rounded-lg bg-[#080a0e]/60 px-2 py-1.5 text-[10.5px] font-bold leading-none tracking-[0.04em] text-white backdrop-blur-md">
-              {snag.duration}
-            </span>
-          ) : null}
-        </span>
-        <p className="text-[12.5px] font-bold leading-[1.22] tracking-[-0.01em] text-white sm:text-[13.5px]">
-          <RichText
-            text={snag.title}
-            className="line-clamp-2"
-            tagClassName="text-[#eab8fb]"
-            onHashtag={onHashtag}
-            onMention={onMention}
+      {/* The swipe moves this wrapper, so the card's own spring stays untouched. */}
+      <div ref={swipeRef} className="relative">
+        {clip ? (
+          <video
+            src={clip}
+            poster={snag.image}
+            muted
+            loop
+            playsInline
+            autoPlay
+            preload="metadata"
+            style={{ aspectRatio: snag.aspect }}
+            className="block w-full bg-ink object-cover transition-transform duration-500 ease-out group-hover:scale-[1.035]"
           />
-        </p>
-        <div className="mt-2 flex items-center justify-between gap-2">
-          {snag.sponsoredBy ? (
-            <span className="flex min-w-0 items-center gap-1.5 text-[10px] font-semibold text-white/85">
-              <span className="truncate">Sponsored by {snag.sponsoredBy}</span>
+        ) : (
+          <img
+            src={snag.image}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+            style={{ aspectRatio: snag.aspect }}
+            className="block w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.035]"
+          />
+        )}
+
+        <button
+          type="button"
+          onPointerDown={handlePointerDown}
+          onPointerUp={clearTimer}
+          onPointerCancel={clearTimer}
+          onPointerLeave={clearTimer}
+          onClick={handleClick}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            clearTimer();
+            onQuickShare(snag);
+          }}
+          aria-label={
+            snag.sponsoredBy
+              ? `${snag.title}. Ad for ${snag.sponsoredBy}, in ${snag.game}. Open post.`
+              : `${snag.title}. ${snag.game}, snagged by ${snag.creator}. Open snag. Double tap or swipe right to like, swipe left to save.`
+          }
+          className="absolute inset-0 z-0 select-none rounded-2xl [-webkit-touch-callout:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
+        />
+
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[64%] bg-gradient-to-t from-[#080a0e]/95 via-[#080a0e]/40 to-transparent"
+        />
+
+        {burst ? (
+          <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 grid place-items-center">
+            <span className="heart-burst grid place-items-center text-white drop-shadow-[0_6px_18px_rgba(0,0,0,0.45)]">
+              <Icon name="heart" size={96} strokeWidth={1.5} filled />
             </span>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onOpenProfile(snag.creatorId ?? snag.creator)}
-              aria-label={`Open ${snag.creator}'s profile`}
-              className="pointer-events-auto flex min-w-0 items-center gap-1.5 rounded-full text-[10px] font-medium text-white/85 transition-colors hover:text-white"
-            >
-              <Avatar name={snag.creator} size={18} tone="glass" src={creatorAvatar} />
-              <span className="truncate">@{snag.creator}</span>
-              {creatorVerified ? (
-                <Icon name="verified" size={11} className="shrink-0 text-[#4da3ff]" />
-              ) : null}
-            </button>
-          )}
-          <span className="shrink-0 text-[10px] font-bold text-[#eab8fb]">{snag.postedAt}</span>
+          </span>
+        ) : null}
+
+        {snag.sponsoredBy ? (
+          <span className="pointer-events-none absolute left-2.5 top-2.5 z-10 rounded-lg bg-brand px-2 py-1.5 text-[10.5px] font-extrabold uppercase leading-none tracking-[0.1em] text-white">
+            Ad
+          </span>
+        ) : null}
+
+        <div className="absolute right-2.5 top-2.5 z-20 flex flex-col items-end gap-2">
+          <button
+            type="button"
+            onClick={() => onToggleLike(snag)}
+            aria-pressed={liked}
+            aria-label={`${liked ? "Unlike" : "Like"} ${snag.title}`}
+            className={`flex items-center gap-2 rounded-xl px-2.5 py-2 text-[12.5px] font-bold leading-none backdrop-blur-md transition-colors ${
+              liked
+                ? "bg-brand text-white"
+                : "border border-white/25 bg-[#080a0e]/60 text-white hover:bg-[#080a0e]/80"
+            }`}
+          >
+            <Icon name="heart" size={20} strokeWidth={2.3} filled={liked} />
+            <CountUp value={likeCount} format={formatCount} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onToggleSave(snag)}
+            aria-pressed={saved}
+            aria-label={`${saved ? "Remove from saved" : "Save"} ${snag.title}`}
+            className={`flex items-center gap-2 rounded-xl px-2.5 py-2 text-[12.5px] font-bold leading-none backdrop-blur-md transition-colors ${
+              saved
+                ? "bg-white text-ink"
+                : "border border-white/25 bg-[#080a0e]/60 text-white hover:bg-[#080a0e]/80"
+            }`}
+          >
+            <Icon name="bookmark" size={19} strokeWidth={2.1} filled={saved} />
+            <CountUp value={saveCount} format={formatCount} />
+          </button>
+        </div>
+
+        <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10">
+          <span className="mb-2 flex flex-wrap items-center gap-1.5">
+            <GameTag game={snag.game} height={22} className="max-w-[96px]" />
+            {snag.duration ? (
+              <span className="rounded-lg bg-[#080a0e]/60 px-2 py-1.5 text-[10.5px] font-bold leading-none tracking-[0.04em] text-white backdrop-blur-md">
+                {snag.duration}
+              </span>
+            ) : null}
+          </span>
+          <p className="text-[12.5px] font-bold leading-[1.22] tracking-[-0.01em] text-white sm:text-[13.5px]">
+            <RichText
+              text={snag.title}
+              className="line-clamp-2"
+              tagClassName="text-[#eab8fb]"
+              onHashtag={onHashtag}
+              onMention={onMention}
+            />
+          </p>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            {snag.sponsoredBy ? (
+              <span className="flex min-w-0 items-center gap-1.5 text-[10px] font-semibold text-white/85">
+                <span className="truncate">Sponsored by {snag.sponsoredBy}</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onOpenProfile(snag.creatorId ?? snag.creator)}
+                aria-label={`Open ${snag.creator}'s profile`}
+                className="pointer-events-auto flex min-w-0 items-center gap-1.5 rounded-full text-[10px] font-medium text-white/85 transition-colors hover:text-white"
+              >
+                <Avatar name={snag.creator} size={18} tone="glass" src={creatorAvatar} />
+                <span className="truncate">@{snag.creator}</span>
+                {creatorVerified ? (
+                  <Icon name="verified" size={11} className="shrink-0 text-[#4da3ff]" />
+                ) : null}
+              </button>
+            )}
+            <span className="shrink-0 text-[10px] font-bold text-[#eab8fb]">{snag.postedAt}</span>
+          </div>
         </div>
       </div>
+
+      {/* What a swipe is about to do, shown while the card is dragged. */}
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute left-3 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl bg-brand px-3 py-2 text-white shadow-[0_10px_24px_rgba(23,25,29,0.3)] transition-opacity duration-150 ${
+          hint === "like" ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <Icon name="heart" size={20} strokeWidth={2.3} filled />
+        <span className="text-[9px] font-extrabold uppercase tracking-[0.1em]">Like</span>
+      </span>
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute right-3 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl bg-ink px-3 py-2 text-white shadow-[0_10px_24px_rgba(23,25,29,0.3)] transition-opacity duration-150 ${
+          hint === "save" ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <Icon name="bookmark" size={19} strokeWidth={2.2} filled />
+        <span className="text-[9px] font-extrabold uppercase tracking-[0.1em]">Save</span>
+      </span>
     </div>
   );
 }

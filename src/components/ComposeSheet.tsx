@@ -1,14 +1,30 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { GAME_PICKS, OTHER_GAME } from "../data/games";
 import { COVER_PRESETS, type SnagCategory, type SnagDraft } from "../data/snags";
-import { fileToCover, UPLOAD_HINTS, type CoverUpload } from "../lib/imageUpload";
+import { CLIP_HINTS, CLIP_LIMITS, formatBytes } from "../lib/clipLimits";
+import { saveClip } from "../lib/clipStore";
+import { fileToClip, fileToCover, UPLOAD_HINTS, type CoverUpload } from "../lib/imageUpload";
 import { tagOverflow } from "../lib/tags";
 import { GamePicker } from "./GamePicker";
 import { Icon } from "./Icon";
 import { Sheet } from "./Sheet";
 import { TagComposer } from "./TagComposer";
 
-const COMPOSE_CATEGORIES: SnagCategory[] = ["Clips", "Loadouts", "Screenshots", "Squad Galleries"];
+const COMPOSE_CATEGORIES: SnagCategory[] = ["Clips", "Loadouts", "Skins", "Screenshots", "Squad Galleries"];
+
+/** An MP4 waiting to be posted, plus the poster frame that stands in for it. */
+type ClipDraft = {
+  id: string;
+  name: string;
+  poster: string;
+  aspect: string;
+  duration: string;
+  seconds: number;
+  width: number;
+  height: number;
+  bytes: number;
+  previewUrl: string;
+};
 
 type ComposeSheetProps = {
   squad?: { id: string; name: string };
@@ -24,14 +40,36 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
   const [coverId, setCoverId] = useState(COVER_PRESETS[0].id);
   const [upload, setUpload] = useState<(CoverUpload & { name: string }) | null>(null);
   const [useUpload, setUseUpload] = useState(false);
+  const [clip, setClip] = useState<ClipDraft | null>(null);
   const [coverBusy, setCoverBusy] = useState(false);
   const [coverError, setCoverError] = useState<string | null>(null);
+  const previewUrl = useRef<string | null>(null);
 
   const preset = COVER_PRESETS.find((item) => item.id === coverId) ?? COVER_PRESETS[0];
-  const usingUpload = useUpload && upload !== null;
-  const cover = usingUpload && upload ? upload : preset;
+  const usingUpload = !clip && useUpload && upload !== null;
+  const cover = clip
+    ? { image: clip.poster, aspect: clip.aspect }
+    : usingUpload && upload
+      ? upload
+      : preset;
   const postingGame = game === OTHER_GAME ? customGame.trim() : game;
-  const canPost = title.trim().length > 0 && postingGame.length > 0 && tagOverflow(title) === 0;
+  const overTags = tagOverflow(title);
+  const canPost = title.trim().length > 0 && postingGame.length > 0 && overTags === 0;
+
+  // The picked file's blob URL only needs to live as long as this sheet is open.
+  useEffect(
+    () => () => {
+      if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+    },
+    [],
+  );
+
+  const clearClip = () => {
+    if (!clip) return;
+    URL.revokeObjectURL(clip.previewUrl);
+    previewUrl.current = null;
+    setClip(null);
+  };
 
   const handleCoverFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -40,12 +78,36 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
 
     setCoverError(null);
     setCoverBusy(true);
+
     try {
-      const result = await fileToCover(file);
-      setUpload({ ...result, name: file.name });
-      setUseUpload(true);
+      if (file.type.startsWith("video/")) {
+        const result = await fileToClip(file);
+        const id = await saveClip(file);
+        clearClip();
+        previewUrl.current = result.previewUrl;
+        setClip({
+          id,
+          name: file.name,
+          poster: result.image,
+          aspect: result.aspect,
+          duration: result.duration,
+          seconds: result.seconds,
+          width: result.width,
+          height: result.height,
+          bytes: result.bytes,
+          previewUrl: result.previewUrl,
+        });
+        setUpload(null);
+        setUseUpload(false);
+        if (!squad) setCategory("Clips");
+      } else {
+        const result = await fileToCover(file);
+        clearClip();
+        setUpload({ ...result, name: file.name });
+        setUseUpload(true);
+      }
     } catch (error) {
-      setCoverError(error instanceof Error ? error.message : "That image could not be uploaded.");
+      setCoverError(error instanceof Error ? error.message : "That file could not be uploaded.");
     } finally {
       setCoverBusy(false);
     }
@@ -60,7 +122,8 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
       category: squad ? "Squad Galleries" : category,
       image: cover.image,
       aspect: cover.aspect,
-      duration: category === "Clips" && !usingUpload ? "0:22" : undefined,
+      duration: clip ? clip.duration : category === "Clips" && !usingUpload ? "0:22" : undefined,
+      clipId: clip?.id,
       squadId: squad?.id,
     });
   };
@@ -98,9 +161,12 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
         <fieldset className="mt-5">
           <legend className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#4d535c]">Cover</legend>
           <p className="mt-1.5 text-[10.5px] leading-relaxed text-muted">{UPLOAD_HINTS.cover}</p>
+          <p className="mt-1 text-[10.5px] leading-relaxed text-muted">
+            Clips: {CLIP_HINTS.clip} {CLIP_HINTS.poster}
+          </p>
           <div className="mt-2 grid grid-cols-4 gap-2">
             {COVER_PRESETS.map((item) => {
-              const isSelected = !usingUpload && item.id === coverId;
+              const isSelected = !clip && !usingUpload && item.id === coverId;
               return (
                 <button
                   key={item.id}
@@ -108,6 +174,7 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
                   onClick={() => {
                     setCoverId(item.id);
                     setUseUpload(false);
+                    clearClip();
                   }}
                   aria-pressed={isSelected}
                   aria-label={item.label}
@@ -125,7 +192,24 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
               );
             })}
 
-            {upload ? (
+            {clip ? (
+              <span
+                aria-label={`Cover frame from ${clip.name}`}
+                className="relative aspect-square overflow-hidden rounded-xl ring-2 ring-ink ring-offset-2"
+              >
+                <img src={clip.poster} alt="" className="h-full w-full object-cover" draggable={false} />
+                <span className="absolute inset-0 grid place-items-center bg-ink/25">
+                  <span aria-hidden="true" className="grid h-8 w-8 place-items-center rounded-full bg-white/90 text-ink">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M8.4 5.2 18.6 12 8.4 18.8z" />
+                    </svg>
+                  </span>
+                </span>
+                <span className="absolute bottom-1 left-1 rounded bg-ink/85 px-1 py-0.5 text-[8px] font-bold uppercase tracking-[0.08em] text-white">
+                  MP4
+                </span>
+              </span>
+            ) : upload ? (
               <button
                 type="button"
                 onClick={() => setUseUpload(true)}
@@ -163,13 +247,13 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
           <input
             id="cover-upload"
             type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
+            accept="image/png,image/jpeg,image/webp,image/gif,video/mp4"
             className="sr-only"
             onChange={handleCoverFile}
           />
 
           {coverBusy ? (
-            <p className="mt-2 text-[10.5px] font-medium text-muted">Processing image…</p>
+            <p className="mt-2 text-[10.5px] font-medium text-muted">Reading your file…</p>
           ) : null}
 
           {coverError ? (
@@ -178,7 +262,34 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
             </p>
           ) : null}
 
-          {upload ? (
+          {clip ? (
+            <div className="mt-2 flex items-center gap-3 rounded-xl bg-surface p-2.5">
+              <video
+                src={clip.previewUrl}
+                poster={clip.poster}
+                controls
+                playsInline
+                preload="metadata"
+                className="h-20 w-32 shrink-0 rounded-lg bg-ink object-cover"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[10.5px] text-muted">
+                  {clip.name} · {clip.width} × {clip.height} px · {clip.duration} · {formatBytes(clip.bytes)}
+                </p>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-muted">
+                  Cover frame taken at {CLIP_LIMITS.posterSeconds}s. Between {CLIP_LIMITS.minSeconds}s and{" "}
+                  {CLIP_LIMITS.maxSeconds}s, up to {formatBytes(CLIP_LIMITS.maxBytes)}.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={clearClip}
+                className="shrink-0 self-start text-[10.5px] font-semibold text-[#4d535c] transition-colors hover:text-ink"
+              >
+                Remove
+              </button>
+            </div>
+          ) : upload ? (
             <div className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-surface px-2.5 py-2">
               <p className="min-w-0 truncate text-[10.5px] text-muted">
                 {upload.name} · {upload.width} × {upload.height} px{upload.isGif ? " · GIF" : ""}
@@ -200,7 +311,7 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
               className="mt-2 inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-line px-3 text-[11.5px] font-semibold text-[#4d535c] transition-colors hover:border-[#d8dce1]"
             >
               <Icon name="plus" size={14} strokeWidth={2.2} />
-              {coverBusy ? "Processing" : "Upload your own"}
+              {coverBusy ? "Reading your file" : "Upload a cover or MP4 clip"}
             </label>
           )}
         </fieldset>
@@ -216,7 +327,7 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           maxLength={70}
-          placeholder="Give the snag a name"
+          placeholder="Give the snag a name, and add #tags"
           className="mt-2 h-12 w-full rounded-xl border border-line bg-white px-3 text-[13px] text-ink outline-none transition placeholder:text-faint focus:border-brand focus:ring-4 focus:ring-brand/10"
         />
 
@@ -272,7 +383,7 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
           {squad ? "Post to gallery" : "Post snag"}
         </button>
         <p className="mt-3 text-center text-[10px] leading-relaxed text-faint">
-          Posted snags live in this session only — no account needed.
+          Posted snags stay in this browser — no account needed.
         </p>
       </form>
     </Sheet>
