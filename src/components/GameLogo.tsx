@@ -39,14 +39,14 @@ export function GameChip({ game, className }: { game: string; className?: string
 
   return (
     <span
-      className={`flex max-w-full items-center rounded-lg border border-white/25 bg-[#080a0e]/60 px-2 py-1.5 backdrop-blur-md ${
+      className={`flex max-w-full items-center overflow-hidden rounded-lg border border-white/25 bg-[#080a0e]/60 px-2 py-1.5 backdrop-blur-md ${
         className ?? ""
       }`}
     >
       {known ? (
-        <GameLogo game={game} height={15} className="max-w-[96px]" />
+        <GameLogo game={game} height={16} className="max-w-[112px]" />
       ) : (
-        <span className="truncate text-[9.5px] font-extrabold uppercase leading-none tracking-[0.09em] text-white">
+        <span className="truncate text-[10.5px] font-extrabold uppercase leading-none tracking-[0.09em] text-white">
           {game}
         </span>
       )}

@@ -165,38 +165,30 @@ export function SnagCard({
       {burst ? (
         <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 grid place-items-center">
           <span className="heart-burst grid place-items-center text-white drop-shadow-[0_6px_18px_rgba(0,0,0,0.45)]">
-            <Icon name="heart" size={78} strokeWidth={1.6} filled />
+            <Icon name="heart" size={96} strokeWidth={1.5} filled />
           </span>
         </span>
       ) : null}
 
-      <span className="pointer-events-none absolute left-2.5 right-[72px] top-2.5 z-10 flex flex-wrap items-center gap-1.5">
-        {snag.sponsoredBy ? (
-          <span className="rounded-lg bg-brand px-2 py-1.5 text-[9.5px] font-extrabold uppercase leading-none tracking-[0.1em] text-white">
-            Ad
-          </span>
-        ) : null}
-        <GameChip game={snag.game} />
-        {snag.duration ? (
-          <span className="rounded-lg bg-[#080a0e]/60 px-2 py-1.5 text-[9.5px] font-bold leading-none tracking-[0.04em] text-white backdrop-blur-md">
-            {snag.duration}
-          </span>
-        ) : null}
-      </span>
+      {snag.sponsoredBy ? (
+        <span className="pointer-events-none absolute left-2.5 top-2.5 z-10 rounded-lg bg-brand px-2 py-1.5 text-[10.5px] font-extrabold uppercase leading-none tracking-[0.1em] text-white">
+          Ad
+        </span>
+      ) : null}
 
-      <div className="absolute right-2.5 top-2.5 z-20 flex flex-col items-end gap-1.5">
+      <div className="absolute right-2.5 top-2.5 z-20 flex flex-col items-end gap-2">
         <button
           type="button"
           onClick={() => onToggleLike(snag)}
           aria-pressed={liked}
           aria-label={`${liked ? "Unlike" : "Like"} ${snag.title}`}
-          className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10.5px] font-bold leading-none backdrop-blur-md transition-colors ${
+          className={`flex items-center gap-2 rounded-xl px-2.5 py-2 text-[12.5px] font-bold leading-none backdrop-blur-md transition-colors ${
             liked
               ? "bg-brand text-white"
               : "border border-white/25 bg-[#080a0e]/60 text-white hover:bg-[#080a0e]/80"
           }`}
         >
-          <Icon name="heart" size={15} strokeWidth={2.4} filled={liked} />
+          <Icon name="heart" size={20} strokeWidth={2.3} filled={liked} />
           <CountUp value={likeCount} format={formatCount} />
         </button>
 
@@ -205,18 +197,26 @@ export function SnagCard({
           onClick={() => onToggleSave(snag)}
           aria-pressed={saved}
           aria-label={`${saved ? "Remove from saved" : "Save"} ${snag.title}`}
-          className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10.5px] font-bold leading-none backdrop-blur-md transition-colors ${
+          className={`flex items-center gap-2 rounded-xl px-2.5 py-2 text-[12.5px] font-bold leading-none backdrop-blur-md transition-colors ${
             saved
               ? "bg-white text-ink"
               : "border border-white/25 bg-[#080a0e]/60 text-white hover:bg-[#080a0e]/80"
           }`}
         >
-          <Icon name="bookmark" size={15} strokeWidth={2.2} filled={saved} />
+          <Icon name="bookmark" size={19} strokeWidth={2.1} filled={saved} />
           <CountUp value={saveCount} format={formatCount} />
         </button>
       </div>
 
       <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10">
+        <span className="mb-2 flex flex-wrap items-center gap-1.5">
+          <GameChip game={snag.game} />
+          {snag.duration ? (
+            <span className="rounded-lg bg-[#080a0e]/60 px-2 py-1.5 text-[10.5px] font-bold leading-none tracking-[0.04em] text-white backdrop-blur-md">
+              {snag.duration}
+            </span>
+          ) : null}
+        </span>
         <p className="text-[12.5px] font-bold leading-[1.22] tracking-[-0.01em] text-white sm:text-[13.5px]">
           <span className="line-clamp-2">{snag.title}</span>
         </p>

@@ -824,46 +824,42 @@ export default function App() {
             ) : null}
           </section>
 
-          <footer className="mt-8 border-t border-line py-8">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <img
-                  src="/brand/snagchat-icon.png"
-                  alt="SnagChat"
-                  width={512}
-                  height={512}
-                  className="h-10 w-auto xl:hidden"
-                />
-                <img
-                  src="/brand/snagchat-wordmark.png"
-                  alt="SnagChat"
-                  width={445}
-                  height={201}
-                  className="hidden h-9 w-auto xl:block"
-                />
-                <p className="mt-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-faint">
-                  Play it. Share it.
-                </p>
-              </div>
-              <p className="max-w-[42ch] text-[10.5px] leading-relaxed text-faint">
+          <footer className="mt-8 border-t border-line py-9 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <img
+                src="/brand/snagchat-icon.png"
+                alt="SnagChat"
+                width={512}
+                height={512}
+                className="h-14 w-auto xl:hidden"
+              />
+              <img
+                src="/brand/snagchat-wordmark.png"
+                alt="SnagChat"
+                width={445}
+                height={201}
+                className="hidden h-10 w-auto xl:block"
+              />
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-faint">Play it. Share it.</p>
+              <p className="mx-auto max-w-[42ch] text-[11.5px] leading-relaxed text-muted">
                 Snags, loadouts and squad galleries in one feed. Built for the people you queue with.
               </p>
             </div>
 
-            <div className="mt-6 flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-[10.5px] text-faint">© {COPYRIGHT_YEAR} SnagChat. All rights reserved.</p>
-              <nav aria-label="Legal" className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            <div className="mt-6 flex flex-col items-center gap-3 border-t border-line pt-6">
+              <nav aria-label="Legal" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
                 {LEGAL_DOCS.map((doc) => (
                   <button
                     key={doc.id}
                     type="button"
                     onClick={() => setLegalDocId(doc.id)}
-                    className="text-[10.5px] font-semibold text-[#4d535c] underline decoration-line underline-offset-2 transition-colors hover:text-ink hover:decoration-ink"
+                    className="text-[12px] font-semibold text-[#4d535c] underline decoration-line underline-offset-4 transition-colors hover:text-ink hover:decoration-ink"
                   >
                     {doc.short}
                   </button>
                 ))}
               </nav>
+              <p className="text-[11px] text-faint">© {COPYRIGHT_YEAR} SnagChat. All rights reserved.</p>
             </div>
           </footer>
         </div>

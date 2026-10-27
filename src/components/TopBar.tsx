@@ -92,11 +92,11 @@ export function TopBar({
             onClick={onToggleSearch}
             aria-expanded={searchOpen}
             aria-label={searchOpen ? "Close search" : "Search snags"}
-            className={`grid h-10 w-10 place-items-center rounded-full border border-line bg-white transition-colors ${
+            className={`grid h-11 w-11 place-items-center rounded-full border border-line bg-white transition-colors ${
               searchOpen ? "text-brand" : "text-ink hover:border-[#d8dce1] hover:text-brand"
             }`}
           >
-            <Icon name={searchOpen ? "close" : "search"} size={18} />
+            <Icon name={searchOpen ? "close" : "search"} size={22} />
           </button>
 
           <button
@@ -107,11 +107,11 @@ export function TopBar({
                 ? `Notifications, ${notificationCount} unread`
                 : "Notifications"
             }
-            className={`relative grid h-10 w-10 place-items-center rounded-full border border-line bg-white transition-colors ${
+            className={`relative grid h-11 w-11 place-items-center rounded-full border border-line bg-white transition-colors ${
               notificationCount > 0 ? "text-brand" : "text-ink hover:border-[#d8dce1] hover:text-brand"
             }`}
           >
-            <Icon name="bell" size={18} />
+            <Icon name="bell" size={22} />
             {notificationCount > 0 ? (
               <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-brand px-1 text-[9px] font-bold leading-none text-white">
                 {notificationCount}
@@ -123,11 +123,11 @@ export function TopBar({
             type="button"
             onClick={() => onNavigate("squads")}
             aria-label="Squads"
-            className={`grid h-10 w-10 place-items-center rounded-full border border-line bg-white transition-colors ${
+            className={`grid h-11 w-11 place-items-center rounded-full border border-line bg-white transition-colors ${
               activeTab === "squads" ? "text-brand" : "text-ink hover:border-[#d8dce1] hover:text-brand"
             }`}
           >
-            <Icon name="users" size={18} />
+            <Icon name="users" size={22} />
           </button>
 
           <button

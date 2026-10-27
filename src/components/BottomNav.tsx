@@ -33,14 +33,14 @@ function NavItem({
       type="button"
       onClick={onClick}
       aria-current={isActive ? "page" : undefined}
-      className={`flex flex-col items-center gap-1 rounded-xl py-1 text-[10px] font-semibold transition-colors ${
+      className={`flex flex-col items-center gap-1 rounded-xl py-1 text-[11.5px] font-semibold transition-colors ${
         isActive ? "text-brand" : "text-ink hover:text-brand"
       }`}
     >
-      <span className="relative grid h-7 w-9 place-items-center">
-        <Icon name={icon} size={19} strokeWidth={isActive ? 2.1 : 1.8} />
+      <span className="relative grid h-8 w-10 place-items-center">
+        <Icon name={icon} size={25} strokeWidth={isActive ? 2.1 : 1.8} />
         {badge > 0 ? (
-          <span className="absolute -right-0.5 -top-1 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-brand px-1 text-[8px] font-bold leading-none text-white">
+          <span className="absolute -right-0.5 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-brand px-1 text-[9px] font-bold leading-none text-white">
             {badge}
           </span>
         ) : null}
@@ -68,9 +68,9 @@ export function BottomNav({ activeTab, onNavigate, onCreate, unreadCount }: Bott
             type="button"
             onClick={onCreate}
             aria-label="Create a snag"
-            className="-mt-5 grid h-12 w-12 place-items-center rounded-2xl bg-brand text-white shadow-[0_6px_16px_rgba(23,25,29,0.22)] transition-colors hover:bg-brand-deep active:scale-[0.97]"
+            className="-mt-5 grid h-[52px] w-[52px] place-items-center rounded-2xl bg-brand text-white shadow-[0_6px_16px_rgba(23,25,29,0.22)] transition-colors hover:bg-brand-deep active:scale-[0.97]"
           >
-            <Icon name="plus" size={24} strokeWidth={2.2} />
+            <Icon name="plus" size={28} strokeWidth={2.2} />
           </button>
         </div>
 

@@ -87,7 +87,7 @@ export function SnagScreen({
               aria-label="Share snag"
               className="grid h-10 w-10 place-items-center rounded-full text-ink transition-colors hover:bg-surface"
             >
-              <Icon name="share" size={19} />
+              <Icon name="share" size={22} />
             </button>
             <button
               type="button"
@@ -97,7 +97,7 @@ export function SnagScreen({
               aria-label="More actions"
               className="grid h-10 w-10 place-items-center rounded-full text-ink transition-colors hover:bg-surface"
             >
-              <Icon name="more" size={18} />
+              <Icon name="more" size={20} />
             </button>
 
             {menuOpen ? (
@@ -215,7 +215,7 @@ export function SnagScreen({
                     : "border border-line bg-white text-[#4d535c] hover:border-[#d8dce1]"
                 }`}
               >
-                <Icon name="heart" size={21} strokeWidth={2.3} filled={liked} />
+                <Icon name="heart" size={23} strokeWidth={2.3} filled={liked} />
                 <CountUp value={likeCount} format={formatCount} />
                 <span className="sr-only">{liked ? "Liked" : "Like"}</span>
               </button>
@@ -225,7 +225,7 @@ export function SnagScreen({
                 onClick={focusComposer}
                 className="flex h-11 items-center gap-2 rounded-full border border-line bg-white px-4 text-[13px] font-bold text-[#4d535c] transition-colors hover:border-[#d8dce1]"
               >
-                <Icon name="message" size={21} />
+                <Icon name="message" size={23} />
                 <CountUp value={comments.length} />
                 <span className="sr-only">comments</span>
               </button>
@@ -238,7 +238,7 @@ export function SnagScreen({
                   saved ? "bg-ink text-white" : "border border-line bg-white text-[#4d535c] hover:border-[#d8dce1]"
                 }`}
               >
-                <Icon name="bookmark" size={21} strokeWidth={2.2} filled={saved} />
+                <Icon name="bookmark" size={23} strokeWidth={2.2} filled={saved} />
                 <CountUp value={saveCount} format={formatCount} />
                 <span className="sr-only">{saved ? "Saved" : "Save"}</span>
               </button>
@@ -248,7 +248,7 @@ export function SnagScreen({
                 onClick={onShare}
                 className="ml-auto flex h-11 items-center gap-2 rounded-full border border-line bg-white px-4 text-[13px] font-bold text-[#4d535c] transition-colors hover:border-[#d8dce1]"
               >
-                <Icon name="share" size={21} />
+                <Icon name="share" size={23} />
                 <CountUp value={shareCount} format={formatCount} />
                 <span className="sr-only">shares</span>
               </button>
