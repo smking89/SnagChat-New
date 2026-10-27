@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from "react";
-import { GAMES, type Snag } from "../data/snags";
+import { OTHER_GAME, isCatalogGame } from "../data/games";
+import type { Snag } from "../data/snags";
+import { GamePicker } from "./GamePicker";
 import { Icon } from "./Icon";
 import { Sheet } from "./Sheet";
 
@@ -11,13 +13,16 @@ type EditSnagSheetProps = {
 
 export function EditSnagSheet({ snag, onClose, onSave }: EditSnagSheetProps) {
   const [title, setTitle] = useState(snag.title);
-  const [game, setGame] = useState(snag.game);
+  const [game, setGame] = useState(isCatalogGame(snag.game) ? snag.game : OTHER_GAME);
+  const [customGame, setCustomGame] = useState(isCatalogGame(snag.game) ? "" : snag.game);
+
+  const nextGame = game === OTHER_GAME ? customGame.trim() : game;
 
   const save = (event: FormEvent) => {
     event.preventDefault();
     const nextTitle = title.trim();
-    if (!nextTitle) return;
-    onSave({ title: nextTitle, game });
+    if (!nextTitle || !nextGame) return;
+    onSave({ title: nextTitle, game: nextGame });
   };
 
   return (
@@ -65,27 +70,18 @@ export function EditSnagSheet({ snag, onClose, onSave }: EditSnagSheetProps) {
         />
 
         <p className="mt-4 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#4d535c]">Game</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {GAMES.map((item) => (
-            <button
-              key={item}
-              type="button"
-              aria-pressed={game === item}
-              onClick={() => setGame(item)}
-              className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
-                game === item
-                  ? "border-ink bg-ink text-white"
-                  : "border-line bg-white text-[#4d535c] hover:border-[#d8dce1]"
-              }`}
-            >
-              {item}
-            </button>
-          ))}
+        <div className="mt-2">
+          <GamePicker
+            value={game}
+            onChange={setGame}
+            custom={customGame}
+            onCustomChange={setCustomGame}
+          />
         </div>
 
         <button
           type="submit"
-          disabled={!title.trim()}
+          disabled={!title.trim() || !nextGame}
           className="mt-6 h-12 w-full rounded-xl bg-brand text-[13px] font-semibold text-white transition-colors hover:bg-brand-deep disabled:cursor-not-allowed disabled:bg-[#d9c6e6]"
         >
           Save changes

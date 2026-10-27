@@ -21,12 +21,14 @@ Stack: Vite, React 19, TypeScript, Tailwind CSS v4. Fonts (Inter, Plus Jakarta S
 - **Feed** — full-bleed masonry, 2 columns on mobile, 3 on desktop, 12px gap, 16px card radius.
 - **Filters** — sticky category rail (For You, Clips, Loadouts, Screenshots, Squad Galleries) with black-and-white selected state.
 - **Search** — header search filters snags by title, game, creator or category.
-- **Snag view** — tap a card to open the snag: author, game, category, like count, comments and share.
-- **Likes** — heart on every card and in the snag view; counts update and persist.
+- **Snag view** — tap a card to open the snag: author, game logo, category, and like / comment / save / share counts.
+- **Game logos** — every post carries the game's own artwork from `src/data/games.ts`. The composer offers Rust, Minecraft, ARK: Survival Ascended, DayZ, Call of Duty, Palworld and Conan Exiles, plus **Other** for a free-text title; posts without a catalogued logo fall back to the name so nothing looks blank. Steam titles load the publisher's `logo.png` from their store CDN; Minecraft uses the bundled `public/games/minecraft.png`. Swap in licensed artwork in that file before shipping commercially.
+- **Likes and saves** — a heart and a bookmark on every card, plus the same pair in the snag view; both counts update and persist (`snagchat:likes`, `snagchat:saves`).
 - **Comments** — per-snag comment thread with seeded comments and an inline composer.
+- **Share count** — the snag view shows how many times a post went out, and it ticks up when a share actually lands: sending to a squad or a player, the system share sheet, or a copied link (`snagchat:shared`).
 - **Share** — share action in the snag view, or long-press (right-click) a card for a prefilled quick share. Send to a squad or to a player, which drops the snag into a DM thread. The same sheet has **Share a link** and **Copy link**: links look like `?snag=<id>` and reopen the feed with that post already open.
 - **Profile links** — the share icon in a profile header copies or shares `?player=<handle>`, which opens that profile directly.
-- **Motion** — profile stats (snags / followers / following) count up from their previous value with an eased curve (`src/components/CountUp.tsx`); every icon does a rubber-band squash on hover and on press (`src/lib/iconRubber.ts` + `@keyframes icon-rubber` in `src/index.css`); and feed cards spring (`src/lib/cardBounce.ts` + `@keyframes card-bounce` / `card-pop`) — a hover or press squash, plus a pop as they scroll back into view. All of it respects `prefers-reduced-motion`, and the animations are one-off (no looping motion).
+- **Motion** — progress and engagement numbers count up from their previous value with an eased curve (`src/components/CountUp.tsx`): profile stats (snags / followers / following) and the like, comment, save and share counts on cards and in the snag view all roll to their new number instead of snapping. Every icon does a rubber-band squash on hover and on press (`src/lib/iconRubber.ts` + `@keyframes icon-rubber` in `src/index.css`), and feed cards spring (`src/lib/cardBounce.ts` + `@keyframes card-bounce` / `card-pop`) — a hover or press squash, plus a pop as they scroll back into view. All of it respects `prefers-reduced-motion`, and the animations are one-off (no looping motion).
 - **Legal** — the feed footer and the sign-in screen carry "© SnagChat. All rights reserved." plus **Terms / Privacy / Cookies / Guidelines** links that open a legal sheet. Copy lives in `src/data/legal.ts` and is written for a browser-only preview, so it says plainly that data stays on your device.
 - **Presence and verification** — players carry an online flag and a verified flag in `src/data/players.ts`. Online shows a green dot on the avatar (profile header, snag view, DM inbox, chat header, suggestions); verified shows a blue check next to the name in the same places and on feed cards.
 - **Settings** — the gear in your own profile header opens the account settings sheet: profile visibility (Public / Private), **who can follow you** (Everyone / People you follow / No one), **who can send you invites** (same options), **Download my data** (JSON export), and **Delete account** behind a confirmation that wipes the account and every `snagchat:*` key before returning to sign-in.
@@ -40,6 +42,22 @@ Stack: Vite, React 19, TypeScript, Tailwind CSS v4. Fonts (Inter, Plus Jakarta S
 - **Direct messages** — Messages tab in the bottom nav (desktop nav link) with an unread badge, inbox with conversation previews and unread counts, "start a chat" suggestions, and threaded conversations with text and snag attachments. Squads live on the header icon next to search.
 - **Create** — purple create action posts a snag to the top of the feed, with preset covers or your own upload. Still images are scaled to 1200 px and re-encoded; GIFs are kept intact and animate in the feed. Recommended cover size 1080 × 1350 px (4:5), JPG/PNG/WebP up to 6 MB or GIF up to 1.5 MB.
 - **Upload sizes** — the composer and the profile editor both state the recommended dimensions (cover 1080 × 1350, avatar 320 × 320, banner 1200 × 380) next to the upload control.
+
+## Clip uploads
+
+This build accepts still images and GIFs only; there is no video pipeline yet. The limits below are the intended policy for when clips land, and they are chosen to fit the current storage model (`localStorage`, roughly 5 MB per origin) and a thumbnail-first feed:
+
+| Setting | Limit | Why |
+| --- | --- | --- |
+| Length | 60 s, hard cap | Long clips are where the storage and encode cost lives; 60 s covers a fight, a build tour or a loadout rundown. |
+| Resolution | 1080p max, 720p recommended | Re-encode to a single 1080p ceiling and a 720p variant; anything above that is downscaled, never rejected. |
+| Frame rate | 60 fps max, keep the source rate below it | Prevents 120/240 fps captures from tripling the bitrate for no visible gain in the feed. |
+| Bitrate / size | ~6 Mbps target, 50 MB per clip after encode | Keeps one post inside a realistic upload window on mobile data. |
+| Codec | H.264 + AAC in MP4, plus a WebM/VP9 fallback | Plays everywhere without a per-device transcode. |
+| Poster frame | 1 frame extracted at 0.5 s, stored as WebP | The feed renders the poster; the video only loads when opened. |
+| Rejection | Over-length clips are trimmed, not refused; oversized or unreadable files are refused with the reason | Players get a post instead of an error wherever a fix is possible. |
+
+The limits belong in one place — a `src/lib/clipLimits.ts` beside `src/lib/imageUpload.ts` — and the composer should state them next to the upload control the way image sizes are stated today. A real deployment moves the encode server-side and raises the caps; the client only needs to pre-check length, resolution and size before uploading.
 
 ## Accounts
 
@@ -70,4 +88,5 @@ Shared links carry the deep link in the query string (`src/lib/share.ts` reads i
 - Feed imagery: `public/snags/*.jpg`
 - Brand artwork: `public/brand/snagchat-wordmark.png`, `snagchat-icon.png`, and the favicon PNGs in the same folder. The fist icon is the logo below 1280px (phones and tablets); the wordmark is used on desktop widths — header, footer and sign-in screen all follow that rule
 - Nav and search glyphs: `public/brand/icons/{home,compass,dm,user,search}.png`, drawn as CSS masks so the active tab tints purple via `currentColor`
-- Data: `src/data/snags.ts`, `src/data/players.ts`, `src/data/threads.ts`, `src/data/engagement.ts`
+- Data: `src/data/snags.ts`, `src/data/players.ts`, `src/data/threads.ts`, `src/data/engagement.ts`, `src/data/games.ts`
+- Game artwork: `public/games/minecraft.png`; other titles load from their publisher's store CDN

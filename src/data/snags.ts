@@ -29,19 +29,6 @@ export const CATEGORIES = ["For You", "Clips", "Loadouts", "Screenshots", "Squad
 
 export type FeedFilter = (typeof CATEGORIES)[number];
 
-export const GAMES = [
-  "Rust PC",
-  "DayZ",
-  "Squad",
-  "Apex",
-  "Warzone",
-  "Elden Ring",
-  "Rocket League",
-  "Cyberpunk 2077",
-  "Street Fighter 6",
-  "Battlefield",
-] as const;
-
 export const COVER_PRESETS: { id: string; label: string; image: string; aspect: string }[] = [
   { id: "neon", label: "Neon district", image: "/snags/neon-district.jpg", aspect: "3 / 4" },
   { id: "arcade", label: "Arcade run", image: "/snags/arcade-run.jpg", aspect: "1 / 1" },
@@ -64,7 +51,7 @@ export const SEED_SNAGS: Snag[] = [
   {
     id: "snag-02",
     title: "Squad room, purple hour",
-    game: "Warzone",
+    game: "Call of Duty",
     category: "Squad Galleries",
     creator: "Luma",
     postedAt: "28m",
@@ -118,7 +105,7 @@ export const SEED_SNAGS: Snag[] = [
   {
     id: "snag-06",
     title: "Late queue, lights off",
-    game: "Apex",
+    game: "Apex Legends",
     category: "Squad Galleries",
     creator: "Nyx",
     postedAt: "3h",
@@ -160,7 +147,7 @@ export const SEED_SNAGS: Snag[] = [
   {
     id: "snag-10",
     title: "Controller still warm",
-    game: "Warzone",
+    game: "Call of Duty",
     category: "Loadouts",
     creator: "Jax",
     postedAt: "8h",
@@ -170,7 +157,7 @@ export const SEED_SNAGS: Snag[] = [
   {
     id: "snag-11",
     title: "Keybinds I actually use",
-    game: "Rust PC",
+    game: "Rust",
     category: "Loadouts",
     creator: "noxx",
     postedAt: "9h",
@@ -192,7 +179,7 @@ export const SEED_SNAGS: Snag[] = [
   {
     id: "snag-13",
     title: "Rig check: twin 4080s",
-    game: "Rust PC",
+    game: "Rust",
     category: "Loadouts",
     creator: "Sable",
     postedAt: "1d",

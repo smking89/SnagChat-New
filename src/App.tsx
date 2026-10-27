@@ -14,7 +14,7 @@ import { SquadScreen } from "./components/SquadScreen";
 import { SquadsScreen } from "./components/SquadsScreen";
 import { TopBar } from "./components/TopBar";
 import { WelcomeFlow } from "./components/WelcomeFlow";
-import { SEED_COMMENTS, SEED_LIKES, type Comment } from "./data/engagement";
+import { SEED_COMMENTS, SEED_LIKES, SEED_SAVES, SEED_SHARES, type Comment } from "./data/engagement";
 import { COPYRIGHT_YEAR, LEGAL_DOCS, findLegalDoc } from "./data/legal";
 import { findPlayer, findPlayerId, ME, PLAYERS, type Player } from "./data/players";
 import { SEED_SNAGS, type FeedFilter, type Snag, type SnagDraft } from "./data/snags";
@@ -69,6 +69,8 @@ export default function App() {
   });
   const [threads, setThreads] = usePersistentState<Record<string, Thread>>("snagchat:threads", SEED_THREADS);
   const [likes, setLikes] = usePersistentState<string[]>("snagchat:likes", []);
+  const [saves, setSaves] = usePersistentState<string[]>("snagchat:saves", []);
+  const [sharedSnags, setSharedSnags] = usePersistentState<string[]>("snagchat:shared", []);
   const [userComments, setUserComments] = usePersistentState<Record<string, Comment[]>>("snagchat:comments", {});
   const [squads, setSquads] = usePersistentState<Squad[]>("snagchat:squads", SEED_SQUADS);
   const [invites, setInvites] = usePersistentState<SquadInvite[]>("snagchat:squad-invites", SEED_INVITES);
@@ -295,7 +297,19 @@ export default function App() {
     );
   };
 
+  const toggleSave = (snagId: string) => {
+    setSaves((current) =>
+      current.includes(snagId) ? current.filter((id) => id !== snagId) : [...current, snagId],
+    );
+  };
+
+  const markShared = (snagId: string) => {
+    setSharedSnags((current) => (current.includes(snagId) ? current : [...current, snagId]));
+  };
+
   const likeCountFor = (snagId: string) => (SEED_LIKES[snagId] ?? 0) + (likes.includes(snagId) ? 1 : 0);
+  const saveCountFor = (snagId: string) => (SEED_SAVES[snagId] ?? 0) + (saves.includes(snagId) ? 1 : 0);
+  const shareCountFor = (snagId: string) => (SEED_SHARES[snagId] ?? 0) + (sharedSnags.includes(snagId) ? 1 : 0);
 
   const commentsFor = (snagId: string): CommentView[] =>
     [...(SEED_COMMENTS[snagId] ?? []), ...(userComments[snagId] ?? [])]
@@ -431,6 +445,8 @@ export default function App() {
       },
       snags: mySnags,
       likedSnagIds: likes,
+      savedSnagIds: saves,
+      sharedSnagIds: sharedSnags,
       comments: userComments,
       following: follows,
       squads,
@@ -656,10 +672,13 @@ export default function App() {
                     creatorVerified={resolvePlayer(snag.creatorId ?? findPlayerId(snag.creator)).verified}
                     liked={likes.includes(snag.id)}
                     likeCount={likeCountFor(snag.id)}
+                    saved={saves.includes(snag.id)}
+                    saveCount={saveCountFor(snag.id)}
                     onOpen={openSnag}
                     onQuickShare={(item) => setShare({ snag: item, quick: true })}
                     onOpenProfile={openProfile}
                     onToggleLike={(item) => toggleLike(item.id)}
+                    onToggleSave={(item) => toggleSave(item.id)}
                   />
                 ))}
               </div>
@@ -742,12 +761,12 @@ export default function App() {
         <LegalSheet doc={findLegalDoc(legalDocId)!} onClose={() => setLegalDocId(null)} />
       ) : null}
 
-      {share ? (
-        <ShareSheet
+      {share ? (          <ShareSheet
           snag={share.snag}
           squads={squads}
           quick={share.quick}
           onClose={() => setShare(null)}
+          onShared={() => markShared(share.snag.id)}
           onSendToPlayer={sendSnagToPlayer}
           onOpenAuthor={() => {
             const authorId = share.snag.creatorId ?? share.snag.creator;
@@ -797,9 +816,13 @@ export default function App() {
               author={author}
               liked={likes.includes(snag.id)}
               likeCount={likeCountFor(snag.id)}
+              saved={saves.includes(snag.id)}
+              saveCount={saveCountFor(snag.id)}
+              shareCount={shareCountFor(snag.id)}
               comments={commentsFor(snag.id)}
               currentAvatar={mePlayer.avatar}
               onToggleLike={() => toggleLike(snag.id)}
+              onToggleSave={() => toggleSave(snag.id)}
               onShare={() => setShare({ snag, quick: false })}
               onOpenProfile={() => pushScreen({ kind: "profile", playerId: author.id })}
               onAddComment={(text) => addComment(snag.id, text)}

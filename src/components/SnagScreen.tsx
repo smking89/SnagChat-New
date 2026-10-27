@@ -3,6 +3,8 @@ import { formatCount, type Player } from "../data/players";
 import type { Snag } from "../data/snags";
 import { formatRelative } from "../data/threads";
 import { Avatar } from "./Avatar";
+import { CountUp } from "./CountUp";
+import { GameChip } from "./GameLogo";
 import { Icon } from "./Icon";
 import { Screen, ScreenHeader } from "./Screen";
 
@@ -18,9 +20,13 @@ type SnagScreenProps = {
   author: Player;
   liked: boolean;
   likeCount: number;
+  saved: boolean;
+  saveCount: number;
+  shareCount: number;
   comments: CommentView[];
   currentAvatar?: string;
   onToggleLike: () => void;
+  onToggleSave: () => void;
   onShare: () => void;
   onOpenProfile: () => void;
   onAddComment: (text: string) => void;
@@ -32,9 +38,13 @@ export function SnagScreen({
   author,
   liked,
   likeCount,
+  saved,
+  saveCount,
+  shareCount,
   comments,
   currentAvatar,
   onToggleLike,
+  onToggleSave,
   onShare,
   onOpenProfile,
   onAddComment,
@@ -105,8 +115,11 @@ export function SnagScreen({
                   </span>
                 </span>
               </button>
-              <span className="ml-auto shrink-0 rounded-md bg-surface px-2 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-[#4d535c]">
-                {snag.category}
+              <span className="ml-auto flex shrink-0 items-center gap-2">
+                <GameChip game={snag.game} />
+                <span className="rounded-md bg-surface px-2 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-[#4d535c]">
+                  {snag.category}
+                </span>
               </span>
             </div>
 
@@ -117,46 +130,60 @@ export function SnagScreen({
               {snag.title}
             </h1>
 
-            <div className="mt-4 flex items-center gap-2">
+            <div className="mt-4 flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={onToggleLike}
                 aria-pressed={liked}
-                className={`flex h-10 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold transition-colors ${
+                className={`flex h-11 items-center gap-2 rounded-full px-4 text-[13px] font-bold transition-colors ${
                   liked
                     ? "bg-brand text-white hover:bg-brand-deep"
                     : "border border-line bg-white text-[#4d535c] hover:border-[#d8dce1]"
                 }`}
               >
-                <Icon name="heart" size={16} strokeWidth={2.2} filled={liked} />
-                {formatCount(likeCount)}
+                <Icon name="heart" size={21} strokeWidth={2.3} filled={liked} />
+                <CountUp value={likeCount} format={formatCount} />
                 <span className="sr-only">{liked ? "Liked" : "Like"}</span>
               </button>
 
               <button
                 type="button"
                 onClick={focusComposer}
-                className="flex h-10 items-center gap-1.5 rounded-full border border-line bg-white px-3.5 text-[12px] font-semibold text-[#4d535c] transition-colors hover:border-[#d8dce1]"
+                className="flex h-11 items-center gap-2 rounded-full border border-line bg-white px-4 text-[13px] font-bold text-[#4d535c] transition-colors hover:border-[#d8dce1]"
               >
-                <Icon name="message" size={16} />
-                {comments.length}
+                <Icon name="message" size={21} />
+                <CountUp value={comments.length} />
                 <span className="sr-only">comments</span>
               </button>
 
               <button
                 type="button"
-                onClick={onShare}
-                className="ml-auto flex h-10 items-center gap-1.5 rounded-full border border-line bg-white px-3.5 text-[12px] font-semibold text-[#4d535c] transition-colors hover:border-[#d8dce1]"
+                onClick={onToggleSave}
+                aria-pressed={saved}
+                className={`flex h-11 items-center gap-2 rounded-full px-4 text-[13px] font-bold transition-colors ${
+                  saved ? "bg-ink text-white" : "border border-line bg-white text-[#4d535c] hover:border-[#d8dce1]"
+                }`}
               >
-                <Icon name="share" size={16} />
-                Share
+                <Icon name="bookmark" size={21} strokeWidth={2.2} filled={saved} />
+                <CountUp value={saveCount} format={formatCount} />
+                <span className="sr-only">{saved ? "Saved" : "Save"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onShare}
+                className="ml-auto flex h-11 items-center gap-2 rounded-full border border-line bg-white px-4 text-[13px] font-bold text-[#4d535c] transition-colors hover:border-[#d8dce1]"
+              >
+                <Icon name="share" size={21} />
+                <CountUp value={shareCount} format={formatCount} />
+                <span className="sr-only">shares</span>
               </button>
             </div>
 
             <div ref={commentsRef} className="mt-6 scroll-mt-4">
               <div className="flex items-baseline justify-between">
                 <h2 className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#4d535c]">
-                  Comments <span className="text-faint">({comments.length})</span>
+                  Comments <span className="text-faint">(<CountUp value={comments.length} />)</span>
                 </h2>
                 <button
                   type="button"

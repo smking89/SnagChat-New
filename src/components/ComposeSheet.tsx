@@ -1,10 +1,11 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
+import { GAME_PICKS, OTHER_GAME } from "../data/games";
 import { COVER_PRESETS, type SnagCategory, type SnagDraft } from "../data/snags";
 import { fileToCover, UPLOAD_HINTS, type CoverUpload } from "../lib/imageUpload";
+import { GamePicker } from "./GamePicker";
 import { Icon } from "./Icon";
 import { Sheet } from "./Sheet";
 
-const COMPOSE_GAMES = ["Rust PC", "DayZ", "Squad", "Apex", "Warzone", "Elden Ring"];
 const COMPOSE_CATEGORIES: SnagCategory[] = ["Clips", "Loadouts", "Screenshots", "Squad Galleries"];
 
 type ComposeSheetProps = {
@@ -15,7 +16,8 @@ type ComposeSheetProps = {
 
 export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
   const [title, setTitle] = useState("");
-  const [game, setGame] = useState(COMPOSE_GAMES[0]);
+  const [game, setGame] = useState<string>(GAME_PICKS[0]);
+  const [customGame, setCustomGame] = useState("");
   const [category, setCategory] = useState<SnagCategory>(squad ? "Squad Galleries" : "Clips");
   const [coverId, setCoverId] = useState(COVER_PRESETS[0].id);
   const [upload, setUpload] = useState<(CoverUpload & { name: string }) | null>(null);
@@ -26,7 +28,8 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
   const preset = COVER_PRESETS.find((item) => item.id === coverId) ?? COVER_PRESETS[0];
   const usingUpload = useUpload && upload !== null;
   const cover = usingUpload && upload ? upload : preset;
-  const canPost = title.trim().length > 0;
+  const postingGame = game === OTHER_GAME ? customGame.trim() : game;
+  const canPost = title.trim().length > 0 && postingGame.length > 0;
 
   const handleCoverFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -51,7 +54,7 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
     if (!canPost) return;
     onPost({
       title: title.trim(),
-      game,
+      game: postingGame,
       category: squad ? "Squad Galleries" : category,
       image: cover.image,
       aspect: cover.aspect,
@@ -216,22 +219,16 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
         />
 
         <p className="mt-5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#4d535c]">Game</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {COMPOSE_GAMES.map((item) => (
-            <button
-              key={item}
-              type="button"
-              aria-pressed={game === item}
-              onClick={() => setGame(item)}
-              className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
-                game === item
-                  ? "border-ink bg-ink text-white"
-                  : "border-line bg-white text-[#4d535c] hover:border-[#d8dce1]"
-              }`}
-            >
-              {item}
-            </button>
-          ))}
+        <p className="mt-1.5 text-[10.5px] leading-relaxed text-muted">
+          Posts carry the game's own logo. Pick "Other" for anything not listed.
+        </p>
+        <div className="mt-2">
+          <GamePicker
+            value={game}
+            onChange={setGame}
+            custom={customGame}
+            onCustomChange={setCustomGame}
+          />
         </div>
 
         {squad ? (

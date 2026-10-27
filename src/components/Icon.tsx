@@ -15,6 +15,7 @@ type IconName =
   | "edit"
   | "heart"
   | "share"
+  | "bookmark"
   | "dm"
   | "verified"
   | "lock"
@@ -139,6 +140,9 @@ const PATHS: Record<IconName, ReactNode> = {
       />
       <path d="m8.5 12.1 2.4 2.4 4.7-4.9" stroke="#ffffff" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </>
+  ),
+  bookmark: (
+    <path d="M6.6 3.4h10.8a1.5 1.5 0 0 1 1.5 1.5v15.7l-6.9-4.2-6.9 4.2V4.9a1.5 1.5 0 0 1 1.5-1.5z" />
   ),
   share: (
     <>

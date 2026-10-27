@@ -3,6 +3,8 @@ import { formatCount } from "../data/players";
 import type { Snag } from "../data/snags";
 import { useCardBounce } from "../lib/cardBounce";
 import { Avatar } from "./Avatar";
+import { CountUp } from "./CountUp";
+import { GameChip } from "./GameLogo";
 import { Icon } from "./Icon";
 
 type SnagCardProps = {
@@ -11,10 +13,13 @@ type SnagCardProps = {
   creatorVerified?: boolean;
   liked: boolean;
   likeCount: number;
+  saved: boolean;
+  saveCount: number;
   onOpen: (snag: Snag) => void;
   onQuickShare: (snag: Snag) => void;
   onOpenProfile: (creator: string) => void;
   onToggleLike: (snag: Snag) => void;
+  onToggleSave: (snag: Snag) => void;
 };
 
 const LONG_PRESS_MS = 480;
@@ -25,10 +30,13 @@ export function SnagCard({
   creatorVerified = false,
   liked,
   likeCount,
+  saved,
+  saveCount,
   onOpen,
   onQuickShare,
   onOpenProfile,
   onToggleLike,
+  onToggleSave,
 }: SnagCardProps) {
   const timer = useRef<number | null>(null);
   const longPressed = useRef(false);
@@ -97,31 +105,46 @@ export function SnagCard({
         className="pointer-events-none absolute inset-x-0 bottom-0 h-[64%] bg-gradient-to-t from-[#080a0e]/95 via-[#080a0e]/40 to-transparent"
       />
 
-      <span className="pointer-events-none absolute left-2.5 right-16 top-2.5 z-10 flex flex-wrap items-center gap-1.5">
-        <span className="max-w-full truncate rounded-md border border-white/25 bg-white/15 px-1.5 py-1 text-[9px] font-extrabold uppercase leading-none tracking-[0.09em] text-white backdrop-blur-md">
-          {snag.game}
-        </span>
+      <span className="pointer-events-none absolute left-2.5 right-[72px] top-2.5 z-10 flex flex-wrap items-center gap-1.5">
+        <GameChip game={snag.game} />
         {snag.duration ? (
-          <span className="rounded-md bg-[#080a0e]/55 px-1.5 py-1 text-[9px] font-bold leading-none tracking-[0.04em] text-white backdrop-blur-md">
+          <span className="rounded-lg bg-[#080a0e]/60 px-2 py-1.5 text-[9.5px] font-bold leading-none tracking-[0.04em] text-white backdrop-blur-md">
             {snag.duration}
           </span>
         ) : null}
       </span>
 
-      <button
-        type="button"
-        onClick={() => onToggleLike(snag)}
-        aria-pressed={liked}
-        aria-label={`${liked ? "Unlike" : "Like"} ${snag.title}`}
-        className={`absolute right-2.5 top-2.5 z-20 flex items-center gap-1 rounded-md px-1.5 py-1 text-[9px] font-bold leading-none backdrop-blur-md transition-colors ${
-          liked
-            ? "bg-brand text-white"
-            : "border border-white/20 bg-[#080a0e]/55 text-white hover:bg-[#080a0e]/75"
-        }`}
-      >
-        <Icon name="heart" size={11} strokeWidth={2.6} filled={liked} />
-        {formatCount(likeCount)}
-      </button>
+      <div className="absolute right-2.5 top-2.5 z-20 flex flex-col items-end gap-1.5">
+        <button
+          type="button"
+          onClick={() => onToggleLike(snag)}
+          aria-pressed={liked}
+          aria-label={`${liked ? "Unlike" : "Like"} ${snag.title}`}
+          className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10.5px] font-bold leading-none backdrop-blur-md transition-colors ${
+            liked
+              ? "bg-brand text-white"
+              : "border border-white/25 bg-[#080a0e]/60 text-white hover:bg-[#080a0e]/80"
+          }`}
+        >
+          <Icon name="heart" size={15} strokeWidth={2.4} filled={liked} />
+          <CountUp value={likeCount} format={formatCount} />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onToggleSave(snag)}
+          aria-pressed={saved}
+          aria-label={`${saved ? "Remove from saved" : "Save"} ${snag.title}`}
+          className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10.5px] font-bold leading-none backdrop-blur-md transition-colors ${
+            saved
+              ? "bg-white text-ink"
+              : "border border-white/25 bg-[#080a0e]/60 text-white hover:bg-[#080a0e]/80"
+          }`}
+        >
+          <Icon name="bookmark" size={15} strokeWidth={2.2} filled={saved} />
+          <CountUp value={saveCount} format={formatCount} />
+        </button>
+      </div>
 
       <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10">
         <p className="text-[12.5px] font-bold leading-[1.22] tracking-[-0.01em] text-white sm:text-[13.5px]">

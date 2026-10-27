@@ -16,6 +16,8 @@ type ShareSheetProps = {
   onClose: () => void;
   onSendToPlayer: (playerId: string, message: string, snag: Snag) => void;
   onOpenAuthor: () => void;
+  /** Fired once a share actually lands, so the post's share count can move. */
+  onShared: () => void;
 };
 
 const SEND_TO_PLAYERS = PLAYERS.filter((player) => player.id !== "you").slice(0, 8);
@@ -27,6 +29,7 @@ export function ShareSheet({
   onClose,
   onSendToPlayer,
   onOpenAuthor,
+  onShared,
 }: ShareSheetProps) {
   const [recipient, setRecipient] = useState<Recipient>(
     squads.length > 0
@@ -40,17 +43,19 @@ export function ShareSheet({
   const link = postShareUrl(snag.id);
 
   const shareThisLink = async () => {
-    setLinkStatus(
-      await shareLink({
-        title: `${snag.title} on SnagChat`,
-        text: `${snag.title} — @${snag.creator} on SnagChat`,
-        url: link,
-      }),
-    );
+    const outcome = await shareLink({
+      title: `${snag.title} on SnagChat`,
+      text: `${snag.title} — @${snag.creator} on SnagChat`,
+      url: link,
+    });
+    setLinkStatus(outcome);
+    if (outcome === "shared" || outcome === "copied") onShared();
   };
 
   const copyThisLink = async () => {
-    setLinkStatus(await copyShareLink(link));
+    const outcome = await copyShareLink(link);
+    setLinkStatus(outcome);
+    if (outcome === "shared" || outcome === "copied") onShared();
   };
 
   const squad = recipient.kind === "squad" ? squads.find((item) => item.id === recipient.id) : undefined;
@@ -58,6 +63,7 @@ export function ShareSheet({
   const targetName = squad ? squad.name : `@${player?.handle ?? "player"}`;
 
   const handleSend = () => {
+    onShared();
     if (recipient.kind === "player" && player) {
       onSendToPlayer(player.id, message, snag);
       return;
@@ -148,7 +154,7 @@ export function ShareSheet({
                 onClick={shareThisLink}
                 className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-ink text-[12px] font-semibold text-white transition-colors hover:bg-[#22252a]"
               >
-                <Icon name="share" size={14} strokeWidth={2} />
+                <Icon name="share" size={17} strokeWidth={2} />
                 Share
               </button>
               <button
