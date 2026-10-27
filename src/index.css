@@ -1,0 +1,189 @@
+@import "tailwindcss";
+@import "./fonts.css";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink: #17191d;
+  --color-muted: #777d87;
+  --color-faint: #9aa0a9;
+  --color-line: #eceef1;
+  --color-surface: #f6f7f8;
+
+  --color-brand: #9400d3;
+  --color-brand-deep: #7a00ae;
+  --color-brand-soft: #f6e8fd;
+  --color-brand-tint: #fcf7fe;
+}
+
+@keyframes icon-rubber {
+  0% {
+    transform: scale(1, 1);
+  }
+  25% {
+    transform: scale(1.22, 0.78);
+  }
+  45% {
+    transform: scale(0.86, 1.14);
+  }
+  62% {
+    transform: scale(1.08, 0.94);
+  }
+  78% {
+    transform: scale(0.97, 1.03);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+/* Same shape under a second name so a press can restart it mid-hover. */
+@keyframes icon-rubber-press {
+  0% {
+    transform: scale(1, 1);
+  }
+  25% {
+    transform: scale(1.22, 0.78);
+  }
+  45% {
+    transform: scale(0.86, 1.14);
+  }
+  62% {
+    transform: scale(1.08, 0.94);
+  }
+  78% {
+    transform: scale(0.97, 1.03);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-white font-sans text-ink antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--color-brand-soft);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sheet-scrim {
+    animation: scrim-in 0.22s ease-out both;
+  }
+
+  .sheet-panel {
+    animation: sheet-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .rise-in {
+    animation: rise-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .screen-panel {
+    animation: screen-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .icon-rubber {
+    transform-origin: center;
+    will-change: transform;
+  }
+
+  /* Hover: run once when the pointer enters the control. */
+  button:hover .icon-rubber,
+  a:hover .icon-rubber,
+  [role="button"]:hover .icon-rubber {
+    animation: icon-rubber 520ms cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+
+  /* Press: separate name so a tap restarts the bounce instead of being cut off. */
+  .icon-rubber.is-rubbering {
+    animation: icon-rubber-press 520ms cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+}
+
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes screen-in {
+  from {
+    opacity: 0.6;
+    transform: translateX(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
