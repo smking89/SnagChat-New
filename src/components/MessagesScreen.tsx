@@ -1,6 +1,19 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { findPlayer, type Player } from "../data/players";
-import { formatRelative, formatTime, threadPreview, type Thread, type ThreadMessage } from "../data/threads";
+import {
+  formatRelative,
+  formatTime,
+  liveMessages,
+  statusLabel,
+  threadPreview,
+  vanishLabel,
+  THREAD_MODE_LABELS,
+  THREAD_MODE_SUMMARY,
+  THREAD_MODES,
+  type Thread,
+  type ThreadMessage,
+  type ThreadMode,
+} from "../data/threads";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { Screen, ScreenHeader } from "./Screen";
@@ -12,6 +25,18 @@ type InboxScreenProps = {
   onClose: () => void;
   onOpenThread: (playerId: string) => void;
 };
+
+/** Small label for how a thread's messages behave. */
+function ModeBadge({ mode }: { mode: ThreadMode }) {
+  if (mode === "keep") return null;
+
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-brand-soft px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.08em] text-brand-deep">
+      <Icon name="timer" size={11} strokeWidth={2.2} />
+      {mode === "24h" ? "24h" : "View once"}
+    </span>
+  );
+}
 
 export function InboxScreen({ threads, unreadTotal, suggestions, onClose, onOpenThread }: InboxScreenProps) {
   const rows = [...threads]
@@ -28,53 +53,76 @@ export function InboxScreen({ threads, unreadTotal, suggestions, onClose, onOpen
         action={
           unreadTotal > 0 ? (
             <span className="mr-1 rounded-full bg-brand px-2.5 py-1 text-[10px] font-bold text-white">
-              {unreadTotal} new
+              {unreadTotal} unread
             </span>
-          ) : null
+          ) : (
+            <span className="mr-1 text-[10.5px] font-semibold text-faint">All read</span>
+          )
         }
       />
 
       <div className="flex-1 overflow-y-auto">
         {rows.length > 0 ? (
           <ul className="divide-y divide-line">
-            {rows.map(({ thread, player }) => (
-              <li key={thread.playerId}>
-                <button
-                  type="button"
-                  onClick={() => onOpenThread(thread.playerId)}
-                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-surface"
-                >
-                  <Avatar name={player.name} size={48} tone="soft" src={player.avatar} online={player.online} />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-baseline justify-between gap-3">
-                      <span className="flex min-w-0 items-center gap-1 truncate text-[13.5px] font-bold tracking-[-0.01em]">
-                        <span className="truncate">{player.name}</span>
-                        {player.verified ? (
-                          <Icon name="verified" size={13} className="shrink-0 text-[#1d9bf0]" />
+            {rows.map(({ thread, player }) => {
+              const last = liveMessages(thread).slice(-1)[0];
+              const mineLast = last?.from === "me";
+              const mode = thread.mode ?? "keep";
+
+              return (
+                <li key={thread.playerId}>
+                  <button
+                    type="button"
+                    onClick={() => onOpenThread(thread.playerId)}
+                    className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-surface"
+                  >
+                    <Avatar name={player.name} size={48} tone="soft" src={player.avatar} online={player.online} />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline justify-between gap-3">
+                        <span className="flex min-w-0 items-center gap-1.5 truncate text-[13.5px] font-bold tracking-[-0.01em]">
+                          <span className="truncate">{player.name}</span>
+                          {player.verified ? (
+                            <Icon name="verified" size={13} className="shrink-0 text-[#1d9bf0]" />
+                          ) : null}
+                          <span className="shrink-0 text-[11px] font-medium text-muted">@{player.handle}</span>
+                        </span>
+                        <span className="shrink-0 text-[10px] font-medium text-faint">
+                          {formatRelative(thread.updatedAt)}
+                        </span>
+                      </span>
+                      <span className="mt-0.5 flex items-center justify-between gap-2">
+                        <span
+                          className={`truncate text-[11.5px] ${
+                            thread.unread > 0 ? "font-semibold text-ink" : "text-muted"
+                          }`}
+                        >
+                          {threadPreview(thread)}
+                        </span>
+                        {thread.unread > 0 ? (
+                          <span className="grid h-4 min-w-4 shrink-0 place-items-center rounded-full bg-brand px-1 text-[9px] font-bold text-white">
+                            {thread.unread}
+                          </span>
                         ) : null}
                       </span>
-                      <span className="shrink-0 text-[10px] font-medium text-faint">
-                        {formatRelative(thread.updatedAt)}
+                      <span className="mt-1 flex items-center gap-2">
+                        {mode !== "keep" ? <ModeBadge mode={mode} /> : null}
+                        {mineLast && thread.unread === 0 ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-faint">
+                            <Icon
+                              name={last?.status === "read" ? "checks" : "check"}
+                              size={11}
+                              strokeWidth={2.3}
+                              className={last?.status === "read" ? "text-brand" : undefined}
+                            />
+                            {statusLabel(last?.status)}
+                          </span>
+                        ) : null}
                       </span>
                     </span>
-                    <span className="mt-0.5 flex items-center justify-between gap-2">
-                      <span
-                        className={`truncate text-[11.5px] ${
-                          thread.unread > 0 ? "font-semibold text-ink" : "text-muted"
-                        }`}
-                      >
-                        {threadPreview(thread)}
-                      </span>
-                      {thread.unread > 0 ? (
-                        <span className="grid h-4 min-w-4 shrink-0 place-items-center rounded-full bg-brand px-1 text-[9px] font-bold text-white">
-                          {thread.unread}
-                        </span>
-                      ) : null}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            ))}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <div className="px-4 py-12 text-center">
@@ -113,58 +161,149 @@ export function InboxScreen({ threads, unreadTotal, suggestions, onClose, onOpen
 type ThreadScreenProps = {
   player: Player;
   messages: ThreadMessage[];
+  mode: ThreadMode;
+  myAvatar?: string;
   onClose: () => void;
   onOpenProfile: () => void;
   onSend: (text: string) => void;
+  onSetMode: (mode: ThreadMode) => void;
+  /** Drops a message that expired, or was viewed in a view-once chat. */
+  onExpire: (messageId: string) => void;
 };
 
-function MessageBubble({ message, player }: { message: ThreadMessage; player: Player }) {
+/** How long a view-once message stays on screen after being opened. */
+const VIEW_ONCE_MS = 5000;
+
+function MessageBubble({
+  message,
+  player,
+  myAvatar,
+  mode,
+  revealed,
+  onReveal,
+  now,
+}: {
+  message: ThreadMessage;
+  player: Player;
+  myAvatar?: string;
+  mode: ThreadMode;
+  revealed: boolean;
+  onReveal: () => void;
+  now: number;
+}) {
   const mine = message.from === "me";
+  const hidden = mode === "once" && !mine && !revealed;
+  const vanish = mode === "24h" ? vanishLabel(message, now) : null;
 
   return (
     <div className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
-      {mine ? null : <Avatar name={player.name} size={24} tone="soft" src={player.avatar} className="mb-1" />}
-      <div
-        className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 ${
-          mine ? "rounded-br-md bg-brand text-white" : "rounded-bl-md bg-surface text-ink"
-        }`}
-      >
-        {message.snag ? (
-          <>
-            <img
-              src={message.snag.image}
-              alt=""
-              className="mb-2 h-32 w-52 rounded-xl object-cover"
-              draggable={false}
-            />
-            <p className={`text-[12px] font-bold leading-tight ${mine ? "text-white" : "text-ink"}`}>
-              {message.snag.title}
+      {mine ? (
+        <Avatar name="You" size={24} tone="brand" src={myAvatar} className="mb-1" />
+      ) : (
+        <Avatar name={player.name} size={24} tone="soft" src={player.avatar} className="mb-1" />
+      )}
+
+      {hidden ? (
+        <button
+          type="button"
+          onClick={onReveal}
+          className="flex items-center gap-2 rounded-2xl rounded-bl-md border border-dashed border-brand/50 bg-brand-tint px-3.5 py-2.5 text-[12.5px] font-semibold text-brand-deep"
+        >
+          <Icon name="eye" size={16} strokeWidth={2.2} />
+          Tap to view once
+        </button>
+      ) : (
+        <div
+          className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 ${
+            mine ? "rounded-br-md bg-brand text-white" : "rounded-bl-md bg-surface text-ink"
+          }`}
+        >
+          {message.snag ? (
+            <>
+              <img
+                src={message.snag.image}
+                alt=""
+                className="mb-2 h-32 w-52 rounded-xl object-cover"
+                draggable={false}
+              />
+              <p className={`text-[12px] font-bold leading-tight ${mine ? "text-white" : "text-ink"}`}>
+                {message.snag.title}
+              </p>
+            </>
+          ) : null}
+          {message.text ? <p className="mt-1 text-[13px] leading-relaxed">{message.text}</p> : null}
+          {message.snag ? (
+            <p
+              className={`mt-1.5 text-[9px] font-bold uppercase tracking-[0.12em] ${
+                mine ? "text-white/70" : "text-faint"
+              }`}
+            >
+              {message.snag.game}
             </p>
-          </>
-        ) : null}
-        {message.text ? <p className="mt-1 text-[13px] leading-relaxed">{message.text}</p> : null}
-        {message.snag ? (
-          <p
-            className={`mt-1.5 text-[9px] font-bold uppercase tracking-[0.12em] ${
+          ) : null}
+
+          <span
+            className={`mt-1 flex items-center justify-end gap-1.5 text-[9px] ${
               mine ? "text-white/70" : "text-faint"
             }`}
           >
-            {message.snag.game}
-          </p>
-        ) : null}
-        <p className={`mt-1 text-[9px] ${mine ? "text-white/60" : "text-faint"}`}>{formatTime(message.at)}</p>
-      </div>
+            {vanish ? (
+              <span className="inline-flex items-center gap-1 font-semibold">
+                <Icon name="timer" size={10} strokeWidth={2.4} />
+                {vanish}
+              </span>
+            ) : null}
+            {formatTime(message.at)}
+            {mine ? (
+              <span className="inline-flex items-center gap-0.5 font-bold">
+                <Icon
+                  name={message.status === "read" ? "checks" : "check"}
+                  size={11}
+                  strokeWidth={2.4}
+                  className={message.status === "read" ? "text-white" : "text-white/70"}
+                />
+                {statusLabel(message.status)}
+              </span>
+            ) : null}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
 
-export function ThreadScreen({ player, messages, onClose, onOpenProfile, onSend }: ThreadScreenProps) {
+export function ThreadScreen({
+  player,
+  messages,
+  mode,
+  myAvatar,
+  onClose,
+  onOpenProfile,
+  onSend,
+  onSetMode,
+  onExpire,
+}: ThreadScreenProps) {
   const [text, setText] = useState("");
+  const [modeOpen, setModeOpen] = useState(false);
+  const [revealed, setRevealed] = useState<string[]>([]);
+  const [now, setNow] = useState(() => Date.now());
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "nearest" });
   }, [messages.length]);
+
+  // Keeps the 24-hour countdowns honest without re-rendering constantly.
+  useEffect(() => {
+    if (mode !== "24h") return;
+    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, [mode]);
+
+  const reveal = (message: ThreadMessage) => {
+    setRevealed((current) => [...current, message.id]);
+    window.setTimeout(() => onExpire(message.id), VIEW_ONCE_MS);
+  };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -195,25 +334,115 @@ export function ThreadScreen({ player, messages, onClose, onOpenProfile, onSend 
                   <Icon name="verified" size={12} className="shrink-0 text-[#1d9bf0]" />
                 ) : null}
               </span>
-              <span className="block truncate text-[10px] font-medium text-muted">@{player.handle}</span>
+              <span className="block truncate text-[10px] font-medium text-muted">
+                @{player.handle} · {player.online ? "online" : "offline"}
+              </span>
             </span>
           </button>
         }
         onBack={onClose}
+        action={
+          <div className="relative flex items-center">
+            <button
+              type="button"
+              onClick={() => setModeOpen((open) => !open)}
+              aria-expanded={modeOpen}
+              aria-haspopup="menu"
+              aria-label="Message timer"
+              className={`grid h-10 w-10 place-items-center rounded-full transition-colors hover:bg-surface ${
+                mode === "keep" ? "text-ink" : "text-brand"
+              }`}
+            >
+              <Icon name="timer" size={18} />
+            </button>
+
+            {modeOpen ? (
+              <>
+                <button
+                  type="button"
+                  aria-label="Close menu"
+                  onClick={() => setModeOpen(false)}
+                  className="fixed inset-0 z-30 cursor-default"
+                />
+                <div
+                  role="menu"
+                  className="absolute right-0 top-12 z-40 w-64 overflow-hidden rounded-2xl border border-line bg-white p-1.5 shadow-[0_18px_48px_rgba(23,25,29,0.18)]"
+                >
+                  <p className="px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#4d535c]">
+                    Message timer
+                  </p>
+                  {THREAD_MODES.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={mode === option}
+                      onClick={() => {
+                        onSetMode(option);
+                        setModeOpen(false);
+                      }}
+                      className={`flex w-full items-start gap-2.5 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-surface ${
+                        mode === option ? "bg-brand-tint" : ""
+                      }`}
+                    >
+                      <span
+                        className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border ${
+                          mode === option ? "border-brand bg-brand text-white" : "border-[#d8dce1]"
+                        }`}
+                      >
+                        {mode === option ? <Icon name="check" size={10} strokeWidth={3} /> : null}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[12.5px] font-semibold text-ink">{THREAD_MODE_LABELS[option]}</span>
+                        <span className="mt-0.5 block text-[10.5px] leading-snug text-muted">
+                          {THREAD_MODE_SUMMARY[option]}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </div>
+        }
       />
+
+      {mode !== "keep" ? (
+        <p className="flex items-center justify-center gap-2 border-b border-line bg-brand-tint px-4 py-2 text-[10.5px] font-semibold text-brand-deep">
+          <Icon name="timer" size={13} strokeWidth={2.3} />
+          {mode === "24h"
+            ? "Messages here vanish 24 hours after they were sent."
+            : "Messages here vanish as soon as they are viewed once."}
+        </p>
+      ) : null}
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <div className="mx-auto flex max-w-[560px] flex-col gap-2.5">
           {messages.length === 0 ? (
             <div className="py-14 text-center">
-              <p className="font-display text-[15px] font-extrabold tracking-[-0.02em]">Say hello to {player.name}</p>
-              <p className="mx-auto mt-1.5 max-w-[30ch] text-[12px] leading-relaxed text-muted">
-                No messages yet. Share a snag or send the first message.
+              <p className="font-display text-[15px] font-extrabold tracking-[-0.02em]">
+                {mode === "keep" ? `Say hello to ${player.name}` : "Nothing here — and that's the point"}
+              </p>
+              <p className="mx-auto mt-1.5 max-w-[32ch] text-[12px] leading-relaxed text-muted">
+                {mode === "keep"
+                  ? "No messages yet. Share a snag or send the first message."
+                  : mode === "24h"
+                    ? "Only messages from the last 24 hours are kept in this chat."
+                    : "Everything in this chat disappears once it has been viewed."}
               </p>
             </div>
           ) : (
             messages.map((message) => (
-              <MessageBubble key={message.id} message={message} player={player} />
+              <MessageBubble
+                key={message.id}
+                message={message}
+                player={player}
+                myAvatar={myAvatar}
+                mode={mode}
+                revealed={revealed.includes(message.id)}
+                onReveal={() => reveal(message)}
+                now={now}
+              />
             ))
           )}
           <div ref={endRef} />

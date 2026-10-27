@@ -6,7 +6,9 @@ import { EditSnagSheet } from "./components/EditSnagSheet";
 import { FilterRail } from "./components/FilterRail";
 import { LegalSheet } from "./components/LegalSheet";
 import { InboxScreen, ThreadScreen } from "./components/MessagesScreen";
+import { NotificationsScreen } from "./components/NotificationsScreen";
 import { ProfileScreen } from "./components/ProfileScreen";
+import { ReportSheet, type ReportMode } from "./components/ReportSheet";
 import { ShareSheet } from "./components/ShareSheet";
 import { SnagCard } from "./components/SnagCard";
 import { SnagScreen, type CommentView } from "./components/SnagScreen";
@@ -16,6 +18,7 @@ import { TopBar } from "./components/TopBar";
 import { WelcomeFlow } from "./components/WelcomeFlow";
 import { SEED_COMMENTS, SEED_LIKES, SEED_SAVES, SEED_SHARES, type Comment } from "./data/engagement";
 import { COPYRIGHT_YEAR, LEGAL_DOCS, findLegalDoc } from "./data/legal";
+import { SEED_NOTIFICATIONS, type AppNotification } from "./data/notifications";
 import { findPlayer, findPlayerId, ME, PLAYERS, type Player } from "./data/players";
 import { SEED_SNAGS, type FeedFilter, type Snag, type SnagDraft } from "./data/snags";
 import {
@@ -27,7 +30,13 @@ import {
   type SquadMember,
   type SquadVisibility,
 } from "./data/squads";
-import { SEED_THREADS, type Thread, type ThreadMessage } from "./data/threads";
+import {
+  liveMessages,
+  SEED_THREADS,
+  type Thread,
+  type ThreadMessage,
+  type ThreadMode,
+} from "./data/threads";
 import { deleteAccount, findAccount, handleForEmail, type Session } from "./lib/auth";
 import { downloadJson } from "./lib/export";
 import type { FollowPermission, InvitePermission } from "./lib/settings";
@@ -37,6 +46,7 @@ import type { NavTab } from "./types";
 
 type ScreenState =
   | { kind: "profile"; playerId: string }
+  | { kind: "notifications" }
   | { kind: "messages" }
   | { kind: "thread"; playerId: string }
   | { kind: "snag"; snagId: string }
@@ -76,6 +86,15 @@ export default function App() {
   const [invites, setInvites] = usePersistentState<SquadInvite[]>("snagchat:squad-invites", SEED_INVITES);
   const [session, setSession] = usePersistentState<Session | null>("snagchat:session", null);
   const [onboarded, setOnboarded] = usePersistentState<boolean>("snagchat:onboarded", false);
+  const [notifications, setNotifications] = usePersistentState<AppNotification[]>(
+    "snagchat:notifications",
+    SEED_NOTIFICATIONS,
+  );
+  const [reports, setReports] = usePersistentState<Record<string, { mode: ReportMode; reason: string; at: number }>>(
+    "snagchat:reports",
+    {},
+  );
+  const [report, setReport] = useState<{ snag: Snag; mode: ReportMode } | null>(null);
 
   const [filter, setFilter] = useState<FeedFilter>("For You");
   const [query, setQuery] = useState("");
@@ -179,6 +198,7 @@ export default function App() {
 
   const threadList = useMemo(() => Object.values(threads), [threads]);
   const unreadTotal = threadList.reduce((total, thread) => total + thread.unread, 0);
+  const unreadNotifications = notifications.filter((item) => !item.read).length;
   const suggestions = PLAYERS.filter((player) => player.id !== ME_ID && !threads[player.id]).slice(0, 8);
 
   const squadPostCounts = useMemo(() => {
@@ -245,12 +265,55 @@ export default function App() {
     });
   };
 
+  /**
+   * There is no server in this build, so a sent message walks itself through
+   * sending → sent → read to show the indicators working. A view-once message
+   * is dropped right after it is read, which is the point of that mode.
+   */
+  const advanceMessageStatus = (playerId: string, messageId: string) => {
+    const setStatus = (status: ThreadMessage["status"]) =>
+      setThreads((current) => {
+        const thread = current[playerId];
+        if (!thread) return current;
+        return {
+          ...current,
+          [playerId]: {
+            ...thread,
+            messages: thread.messages.map((message) =>
+              message.id === messageId ? { ...message, status } : message,
+            ),
+          },
+        };
+      });
+
+    window.setTimeout(() => setStatus("sent"), 450);
+    window.setTimeout(() => {
+      setStatus("read");
+      // View-once: once they have seen it, it is gone for good.
+      window.setTimeout(() => {
+        setThreads((current) => {
+          const thread = current[playerId];
+          if (!thread || thread.mode !== "once") return current;
+          return {
+            ...current,
+            [playerId]: {
+              ...thread,
+              messages: thread.messages.filter((message) => message.id !== messageId),
+            },
+          };
+        });
+      }, 1400);
+    }, 1800);
+  };
+
   const sendMessage = (playerId: string, text: string) => {
     const now = Date.now();
+    const messageId = `msg-${now}-${Math.random().toString(36).slice(2, 6)}`;
+
     setThreads((current) => {
       const base = current[playerId] ?? { playerId, messages: [], unread: 0, updatedAt: now };
       const message: ThreadMessage = {
-        id: `msg-${now}-${Math.random().toString(36).slice(2, 6)}`,
+        id: messageId,
         from: "me",
         at: now,
         text,
@@ -260,12 +323,65 @@ export default function App() {
         [playerId]: { ...base, messages: [...base.messages, message], updatedAt: now, unread: 0 },
       };
     });
+
+    advanceMessageStatus(playerId, messageId);
+  };
+
+  const setThreadMode = (playerId: string, mode: ThreadMode) => {
+    setThreads((current) => {
+      const base = current[playerId] ?? { playerId, messages: [], unread: 0, updatedAt: Date.now() };
+      const messages =
+        mode === "once"
+          ? // Anything already viewed cannot come back in a view-once chat.
+            base.messages.filter((message) => message.from === "me" && message.status !== "read")
+          : base.messages;
+      return { ...current, [playerId]: { ...base, mode, messages } };
+    });
+  };
+
+  const expireMessage = (playerId: string, messageId: string) => {
+    setThreads((current) => {
+      const thread = current[playerId];
+      if (!thread) return current;
+      return {
+        ...current,
+        [playerId]: {
+          ...thread,
+          messages: thread.messages.filter((message) => message.id !== messageId),
+        },
+      };
+    });
+  };
+
+  const markNotificationRead = (id: string) => {
+    setNotifications((current) =>
+      current.map((item) => (item.id === id ? { ...item, read: true } : item)),
+    );
+  };
+
+  const openNotification = (notification: AppNotification) => {
+    markNotificationRead(notification.id);
+
+    if (notification.kind === "follow") {
+      pushScreen({ kind: "profile", playerId: notification.actorId });
+      return;
+    }
+
+    if (notification.kind === "invite") {
+      pushScreen({ kind: "squads" });
+      return;
+    }
+
+    if (notification.snagId && snags.some((snag) => snag.id === notification.snagId)) {
+      pushScreen({ kind: "snag", snagId: notification.snagId });
+    }
   };
 
   const sendSnagToPlayer = (playerId: string, message: string, snag: Snag) => {
     const now = Date.now();
+    const messageId = `msg-${now}-${Math.random().toString(36).slice(2, 6)}`;
     const payload: ThreadMessage = {
-      id: `msg-${now}-${Math.random().toString(36).slice(2, 6)}`,
+      id: messageId,
       from: "me",
       at: now,
       text: message.trim() || undefined,
@@ -280,6 +396,7 @@ export default function App() {
       };
     });
 
+    advanceMessageStatus(playerId, messageId);
     setShare(null);
     pushScreen({ kind: "thread", playerId });
   };
@@ -620,6 +737,8 @@ export default function App() {
         query={query}
         onQueryChange={setQuery}
         unreadCount={unreadTotal}
+        notificationCount={unreadNotifications}
+        onOpenNotifications={() => pushScreen({ kind: "notifications" })}
       />
 
       <main>
@@ -776,6 +895,22 @@ export default function App() {
         />
       ) : null}
 
+      {report ? (
+        <ReportSheet
+          mode={report.mode}
+          title={report.snag.title}
+          spar={report.snag.sponsoredBy}
+          alreadyReported={Boolean(reports[report.snag.id])}
+          onClose={() => setReport(null)}
+          onSubmit={(reason) =>
+            setReports((current) => ({
+              ...current,
+              [report.snag.id]: { mode: report.mode, reason, at: Date.now() },
+            }))
+          }
+        />
+      ) : null}
+
       {composing ? (
         <ComposeSheet
           squad={composeSquad ? { id: composeSquad.id, name: composeSquad.name } : undefined}
@@ -824,6 +959,8 @@ export default function App() {
               onToggleLike={() => toggleLike(snag.id)}
               onToggleSave={() => toggleSave(snag.id)}
               onShare={() => setShare({ snag, quick: false })}
+              onReport={(mode) => setReport({ snag, mode })}
+              reported={Boolean(reports[snag.id])}
               onOpenProfile={() => pushScreen({ kind: "profile", playerId: author.id })}
               onAddComment={(text) => addComment(snag.id, text)}
               onClose={popScreen}
@@ -837,10 +974,35 @@ export default function App() {
             <ThreadScreen
               key={key}
               player={resolvePlayer(screen.playerId)}
-              messages={thread?.messages ?? []}
+              messages={thread ? liveMessages(thread) : []}
+              mode={thread?.mode ?? "keep"}
+              myAvatar={mePlayer.avatar}
               onClose={popScreen}
               onOpenProfile={() => pushScreen({ kind: "profile", playerId: screen.playerId })}
               onSend={(text) => sendMessage(screen.playerId, text)}
+              onSetMode={(mode) => setThreadMode(screen.playerId, mode)}
+              onExpire={(messageId) => expireMessage(screen.playerId, messageId)}
+            />
+          );
+        }
+
+        if (screen.kind === "notifications") {
+          return (
+            <NotificationsScreen
+              key={key}
+              notifications={notifications}
+              unreadTotal={unreadNotifications}
+              resolveActor={(actorId) => {
+                const player = findPlayer(actorId);
+                return player ? { name: player.name, avatar: player.avatar, verified: player.verified } : undefined;
+              }}
+              titleForSnag={(snagId) => snags.find((snag) => snag.id === snagId)?.title}
+              titleForSquad={(squadId) => squads.find((squad) => squad.id === squadId)?.name}
+              onOpen={openNotification}
+              onMarkAllRead={() =>
+                setNotifications((current) => current.map((item) => ({ ...item, read: true })))
+              }
+              onClose={popScreen}
             />
           );
         }

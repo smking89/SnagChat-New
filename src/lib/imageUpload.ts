@@ -11,8 +11,8 @@ export const BANNER_SIZE = { width: 1200, height: 380 };
 /** The recommended upload sizes shown in the composer and profile editor. */
 export const UPLOAD_HINTS = {
   cover: "Recommended 1080 × 1350 px (4:5). JPG, PNG or WebP up to 6 MB, or a GIF up to 1.5 MB.",
-  avatar: "Recommended 320 × 320 px, square. JPG, PNG or WebP.",
-  banner: "Recommended 1200 × 380 px, wide. JPG, PNG or WebP.",
+  avatar: "Recommended 320 × 320 px, square. JPG, PNG or WebP, or a GIF up to 1.5 MB.",
+  banner: "Recommended 1200 × 380 px, wide. JPG, PNG or WebP, or a GIF up to 1.5 MB.",
 } as const;
 
 async function loadDrawable(file: File): Promise<ImageBitmap | HTMLImageElement> {
@@ -145,12 +145,27 @@ export async function fileToCover(file: File): Promise<CoverUpload> {
   };
 }
 
+/**
+ * Profile photo or banner. GIFs are kept as they are so they stay animated, and
+ * stills are cropped to the target ratio the way covers are.
+ */
+export async function fileToProfileImage(file: File, target: Target): Promise<string> {
+  if (file.type === "image/gif") {
+    if (file.size > GIF_MAX_BYTES) {
+      throw new Error("GIFs need to be 1.5 MB or smaller. Try a shorter or smaller loop.");
+    }
+    return await fileToRawDataUrl(file);
+  }
+
+  return await fileToDataUrl(file, target);
+}
+
 export async function fileToDataUrl(file: File, target: Target): Promise<string> {
   if (!file.type.startsWith("image/")) {
     throw new Error("Choose an image file (JPG, PNG or WebP).");
   }
   if (file.type === "image/gif") {
-    throw new Error("Profile images need to be a still picture — use JPG, PNG or WebP.");
+    throw new Error("GIFs are handled by fileToProfileImage — use that for profile art.");
   }
   if (file.size > MAX_BYTES) {
     throw new Error("That image is larger than 12 MB.");

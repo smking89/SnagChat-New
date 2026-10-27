@@ -13,6 +13,8 @@ export type Snag = {
   /** CSS aspect-ratio value, e.g. "3 / 4.2" */
   aspect: string;
   duration?: string;
+  /** Set on sponsored posts. Only these show the report-ad action. */
+  sponsoredBy?: string;
 };
 
 export type SnagDraft = {
@@ -149,10 +151,11 @@ export const SEED_SNAGS: Snag[] = [
     title: "Controller still warm",
     game: "Call of Duty",
     category: "Loadouts",
-    creator: "Jax",
+    creator: "PadTek",
     postedAt: "8h",
     image: "/snags/controller.jpg",
     aspect: "4 / 3.2",
+    sponsoredBy: "PadTek Gaming",
   },
   {
     id: "snag-11",
@@ -181,10 +184,11 @@ export const SEED_SNAGS: Snag[] = [
     title: "Rig check: twin 4080s",
     game: "Rust",
     category: "Loadouts",
-    creator: "Sable",
+    creator: "NorthLoop",
     postedAt: "1d",
     image: "/snags/rig.jpg",
     aspect: "1 / 1",
+    sponsoredBy: "NorthLoop PC",
   },
   {
     id: "snag-14",

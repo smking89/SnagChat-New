@@ -16,6 +16,12 @@ type IconName =
   | "heart"
   | "share"
   | "bookmark"
+  | "bell"
+  | "more"
+  | "timer"
+  | "flag"
+  | "checks"
+  | "eye"
   | "dm"
   | "verified"
   | "lock"
@@ -143,6 +149,44 @@ const PATHS: Record<IconName, ReactNode> = {
   ),
   bookmark: (
     <path d="M6.6 3.4h10.8a1.5 1.5 0 0 1 1.5 1.5v15.7l-6.9-4.2-6.9 4.2V4.9a1.5 1.5 0 0 1 1.5-1.5z" />
+  ),
+  bell: (
+    <>
+      <path d="M12 3.4A5.6 5.6 0 0 0 6.4 9v3.4L4.9 16h14.2l-1.5-3.6V9A5.6 5.6 0 0 0 12 3.4z" />
+      <path d="M10 19.3a2.2 2.2 0 0 0 4 0" />
+    </>
+  ),
+  more: (
+    <>
+      <circle cx="12" cy="5.4" r="1.7" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="18.6" r="1.7" fill="currentColor" stroke="none" />
+    </>
+  ),
+  timer: (
+    <>
+      <circle cx="12" cy="12.9" r="7.5" />
+      <path d="M12 9.2v3.9l2.8 1.7" />
+      <path d="M9.5 3.4h5" />
+    </>
+  ),
+  flag: (
+    <>
+      <path d="M6 20.6V4.4" />
+      <path d="M6 5.2h11.6l-2 3.5 2 3.5H6" />
+    </>
+  ),
+  checks: (
+    <>
+      <path d="m3.4 12.6 3.5 3.5 6.2-7" />
+      <path d="m11.6 15.4 1 1 6.2-7" />
+    </>
+  ),
+  eye: (
+    <>
+      <path d="M2.8 12S6.6 6.2 12 6.2 21.2 12 21.2 12 17.4 17.8 12 17.8 2.8 12 2.8 12z" />
+      <circle cx="12" cy="12" r="2.9" />
+    </>
   ),
   share: (
     <>

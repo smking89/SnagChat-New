@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from "react";
+import type { ReportMode } from "./ReportSheet";
 import { formatCount, type Player } from "../data/players";
 import type { Snag } from "../data/snags";
 import { formatRelative } from "../data/threads";
@@ -28,6 +29,9 @@ type SnagScreenProps = {
   onToggleLike: () => void;
   onToggleSave: () => void;
   onShare: () => void;
+  /** "ad" is only offered on sponsored posts. */
+  onReport: (mode: ReportMode) => void;
+  reported?: boolean;
   onOpenProfile: () => void;
   onAddComment: (text: string) => void;
   onClose: () => void;
@@ -46,11 +50,14 @@ export function SnagScreen({
   onToggleLike,
   onToggleSave,
   onShare,
+  onReport,
+  reported = false,
   onOpenProfile,
   onAddComment,
   onClose,
 }: SnagScreenProps) {
   const [draft, setDraft] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const commentsRef = useRef<HTMLDivElement>(null);
 
@@ -73,14 +80,69 @@ export function SnagScreen({
         title={snag.game}
         onBack={onClose}
         action={
-          <button
-            type="button"
-            onClick={onShare}
-            aria-label="Share snag"
-            className="grid h-10 w-10 place-items-center rounded-full text-ink transition-colors hover:bg-surface"
-          >
-            <Icon name="share" size={19} />
-          </button>
+          <div className="relative flex items-center">
+            <button
+              type="button"
+              onClick={onShare}
+              aria-label="Share snag"
+              className="grid h-10 w-10 place-items-center rounded-full text-ink transition-colors hover:bg-surface"
+            >
+              <Icon name="share" size={19} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+              aria-label="More actions"
+              className="grid h-10 w-10 place-items-center rounded-full text-ink transition-colors hover:bg-surface"
+            >
+              <Icon name="more" size={18} />
+            </button>
+
+            {menuOpen ? (
+              <>
+                <button
+                  type="button"
+                  aria-label="Close menu"
+                  onClick={() => setMenuOpen(false)}
+                  className="fixed inset-0 z-30 cursor-default"
+                />
+                <div
+                  role="menu"
+                  className="absolute right-0 top-12 z-40 w-56 overflow-hidden rounded-2xl border border-line bg-white p-1.5 shadow-[0_18px_48px_rgba(23,25,29,0.18)]"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onReport("post");
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[12.5px] font-semibold text-ink transition-colors hover:bg-surface"
+                  >
+                    <Icon name="flag" size={16} />
+                    {reported ? "Reported — report again" : "Report post"}
+                  </button>
+
+                  {snag.sponsoredBy ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onReport("ad");
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[12.5px] font-semibold text-ink transition-colors hover:bg-surface"
+                    >
+                      <Icon name="flag" size={16} />
+                      Report ad
+                    </button>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
+          </div>
         }
       />
 
@@ -99,7 +161,8 @@ export function SnagScreen({
               <button
                 type="button"
                 onClick={onOpenProfile}
-                className="flex min-w-0 items-center gap-2.5 text-left"
+                disabled={Boolean(snag.sponsoredBy)}
+                className="flex min-w-0 items-center gap-2.5 text-left disabled:cursor-default"
                 aria-label={`Open ${author.name}'s profile`}
               >
                 <Avatar name={author.name} size={38} tone="soft" src={author.avatar} online={author.online} />
@@ -116,6 +179,11 @@ export function SnagScreen({
                 </span>
               </button>
               <span className="ml-auto flex shrink-0 items-center gap-2">
+                {snag.sponsoredBy ? (
+                  <span className="rounded-md bg-brand px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.1em] text-white">
+                    Ad
+                  </span>
+                ) : null}
                 <GameChip game={snag.game} />
                 <span className="rounded-md bg-surface px-2 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-[#4d535c]">
                   {snag.category}
@@ -129,6 +197,12 @@ export function SnagScreen({
             >
               {snag.title}
             </h1>
+
+            {snag.sponsoredBy ? (
+              <p className="mt-2 text-[11.5px] font-semibold text-muted">
+                Sponsored by {snag.sponsoredBy} · paid placement
+              </p>
+            ) : null}
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <button

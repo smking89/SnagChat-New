@@ -1,15 +1,16 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { formatCount, type Player } from "../data/players";
 import type { Snag } from "../data/snags";
 import { REGIONS } from "../data/regions";
 import { checkUsername, findAccount, updateAccount } from "../lib/auth";
-import { AVATAR_SIZE, BANNER_SIZE, fileToDataUrl, UPLOAD_HINTS } from "../lib/imageUpload";
+import { AVATAR_SIZE, BANNER_SIZE, fileToProfileImage, UPLOAD_HINTS } from "../lib/imageUpload";
 import type { FollowPermission, InvitePermission } from "../lib/settings";
 import { AccountDetails } from "./AccountDetails";
 import { CountUp } from "./CountUp";
 import { profileShareUrl, shareLink, type ShareOutcome } from "../lib/share";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
+import { ImageViewer } from "./ImageViewer";
 import { Screen, ScreenHeader } from "./Screen";
 import { SettingsSheet } from "./SettingsSheet";
 
@@ -93,6 +94,9 @@ export function ProfileScreen({
   });
   const [regionDraft, setRegionDraft] = useState(findAccount(accountEmail)?.region ?? "");
   const [handleError, setHandleError] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<{ src: string; label: string } | null>(null);
+  const avatarInput = useRef<HTMLInputElement>(null);
+  const bannerInput = useRef<HTMLInputElement>(null);
 
   const shareProfile = async () => {
     setShareStatus(
@@ -148,13 +152,27 @@ export function ProfileScreen({
     setEditing(false);
   };
 
-  const handleFile = async (kind: "avatar" | "banner", file: File | undefined) => {
+  /**
+   * Crops the file to the right ratio. Inside the editor the result lands on the
+   * draft; from the profile itself it saves straight away, so tapping an empty
+   * photo or banner is enough to set one.
+   */
+  const processFile = async (kind: "avatar" | "banner", file: File | undefined, persist: boolean) => {
     if (!file) return;
     setUploadError(null);
     setBusy(kind);
     try {
-      const dataUrl = await fileToDataUrl(file, kind === "avatar" ? AVATAR_SIZE : BANNER_SIZE);
+      const dataUrl = await fileToProfileImage(file, kind === "avatar" ? AVATAR_SIZE : BANNER_SIZE);
       setDraft((current) => ({ ...current, [kind]: dataUrl }));
+      if (persist) {
+        onSaveProfile({
+          name: player.name,
+          handle: player.handle,
+          bio: player.bio,
+          avatar: kind === "avatar" ? dataUrl : player.avatar,
+          banner: kind === "banner" ? dataUrl : player.banner,
+        });
+      }
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "That image could not be uploaded.");
     } finally {
@@ -164,8 +182,25 @@ export function ProfileScreen({
 
   const onFileChange = (kind: "avatar" | "banner") => (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    void handleFile(kind, file);
+    void processFile(kind, file, false);
     event.target.value = "";
+  };
+
+  const onProfileFile = (kind: "avatar" | "banner") => (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    void processFile(kind, file, true);
+    event.target.value = "";
+  };
+
+  const openArt = (kind: "avatar" | "banner") => {
+    if (kind === "avatar") {
+      if (avatarSrc) setViewing({ src: avatarSrc, label: `${isMe ? "Your" : `${player.name}'s`} profile photo` });
+      else avatarInput.current?.click();
+      return;
+    }
+
+    if (bannerSrc) setViewing({ src: bannerSrc, label: `${isMe ? "Your" : `${player.name}'s`} banner` });
+    else bannerInput.current?.click();
   };
 
   const avatarSrc = editing ? draft.avatar : player.avatar;
@@ -226,19 +261,63 @@ export function ProfileScreen({
               <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-b from-transparent to-white" />
             </>
           )}
+
+          {isMe || bannerSrc ? (
+            <button
+              type="button"
+              onClick={() => openArt("banner")}
+              aria-label={bannerSrc ? "View banner" : "Add a banner"}
+              className="absolute inset-0 flex items-end justify-end p-2"
+            >
+              <span className="rounded-full bg-[#080a0e]/60 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-md">
+                {busy === "banner" ? "Processing…" : bannerSrc ? "Tap to view" : "Add a banner"}
+              </span>
+            </button>
+          ) : null}
         </div>
 
-        <div className="relative -mt-11 px-4 sm:px-6">
+        <div className="relative z-10 -mt-11 px-4 sm:px-6">
           <div className="mx-auto max-w-[720px]">
             <div className="flex items-end justify-between gap-3">
-              <Avatar
-                name={player.name}
-                size={84}
-                tone={isMe ? "brand" : "soft"}
-                src={avatarSrc}
-                online={player.online}
-                className="font-display ring-4 ring-white"
-              />
+              <button
+                type="button"
+                onClick={() => openArt("avatar")}
+                aria-label={avatarSrc ? "View profile photo" : "Add a profile photo"}
+                className="relative rounded-full transition-transform hover:scale-[1.02]"
+              >
+                <Avatar
+                  name={player.name}
+                  size={84}
+                  tone={isMe ? "brand" : "soft"}
+                  src={avatarSrc}
+                  online={player.online}
+                  className="font-display ring-4 ring-white"
+                />
+                {isMe && !avatarSrc ? (
+                  <span className="absolute bottom-0 right-0 grid h-7 w-7 place-items-center rounded-full border-2 border-white bg-ink text-white">
+                    <Icon name="plus" size={14} strokeWidth={2.4} />
+                  </span>
+                ) : null}
+              </button>
+
+              {isMe ? (
+                <>
+                  <input
+                    ref={avatarInput}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="sr-only"
+                    onChange={onProfileFile("avatar")}
+                  />
+                  <input
+                    ref={bannerInput}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="sr-only"
+                    onChange={onProfileFile("banner")}
+                  />
+                </>
+              ) : null}
               <div className="flex items-center gap-2 pb-1">
                 {isMe ? (
                   <button
@@ -356,7 +435,14 @@ export function ProfileScreen({
                 </div>
                 <p className="mt-1 text-[10px] leading-relaxed text-faint">{UPLOAD_HINTS.avatar}</p>
                 <div className="mt-2 flex items-center gap-3">
-                  <Avatar name={draft.name || player.name} size={52} tone="soft" src={draft.avatar} />
+                  <button
+                    type="button"
+                    onClick={() => draft.avatar && setViewing({ src: draft.avatar, label: "Profile photo" })}
+                    className="rounded-full"
+                    aria-label={draft.avatar ? "View profile photo" : "No profile photo yet"}
+                  >
+                    <Avatar name={draft.name || player.name} size={52} tone="soft" src={draft.avatar} />
+                  </button>
                   <label
                     htmlFor="avatar-upload"
                     className="inline-flex h-9 cursor-pointer items-center rounded-full border border-line px-3 text-[11.5px] font-semibold text-[#4d535c] transition-colors hover:border-[#d8dce1]"
@@ -366,7 +452,7 @@ export function ProfileScreen({
                   <input
                     id="avatar-upload"
                     type="file"
-                    accept="image/png,image/jpeg,image/webp"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
                     className="sr-only"
                     onChange={onFileChange("avatar")}
                   />
@@ -385,13 +471,18 @@ export function ProfileScreen({
                   ) : null}
                 </div>
                 <p className="mt-1 text-[10px] leading-relaxed text-faint">{UPLOAD_HINTS.banner}</p>
-                <div className="mt-2 h-20 w-full overflow-hidden rounded-xl border border-line bg-surface">
+                <button
+                  type="button"
+                  onClick={() => draft.banner && setViewing({ src: draft.banner, label: "Banner" })}
+                  className="mt-2 block h-20 w-full overflow-hidden rounded-xl border border-line bg-surface"
+                  aria-label={draft.banner ? "View banner" : "No banner yet"}
+                >
                   {draft.banner ? (
                     <img src={draft.banner} alt="" className="h-full w-full object-cover" draggable={false} />
                   ) : (
-                    <div className="grid h-full place-items-center text-[10.5px] text-faint">No banner yet</div>
+                    <span className="grid h-full place-items-center text-[10.5px] text-faint">No banner yet</span>
                   )}
-                </div>
+                </button>
                 <div className="mt-2">
                   <label
                     htmlFor="banner-upload"
@@ -402,7 +493,7 @@ export function ProfileScreen({
                   <input
                     id="banner-upload"
                     type="file"
-                    accept="image/png,image/jpeg,image/webp"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
                     className="sr-only"
                     onChange={onFileChange("banner")}
                   />
@@ -414,8 +505,8 @@ export function ProfileScreen({
                   </p>
                 ) : null}
                 <p className="mt-2 text-[10px] leading-relaxed text-faint">
-                  Uploads are cropped to the sizes above and saved in this browser only. GIFs are not supported
-                  for profile images.
+                  Uploads are cropped to the sizes above and saved in this browser only. Animated GIFs are kept
+                  as they are, up to 1.5 MB.
                 </p>
 
                 <div className="mt-4 border-t border-line pt-3">
@@ -613,6 +704,10 @@ export function ProfileScreen({
           onDelete={() => onDeleteAccount?.()}
           onClose={() => setSettingsOpen(false)}
         />
+      ) : null}
+
+      {viewing ? (
+        <ImageViewer src={viewing.src} label={viewing.label} onClose={() => setViewing(null)} />
       ) : null}
     </Screen>
   );
