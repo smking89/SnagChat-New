@@ -1,6 +1,7 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { formatCount } from "../data/players";
 import type { Snag } from "../data/snags";
+import { useCardBounce } from "../lib/cardBounce";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 
@@ -31,6 +32,7 @@ export function SnagCard({
 }: SnagCardProps) {
   const timer = useRef<number | null>(null);
   const longPressed = useRef(false);
+  const cardRef = useCardBounce();
 
   const clearTimer = () => {
     if (timer.current !== null) {
@@ -60,7 +62,10 @@ export function SnagCard({
   };
 
   return (
-    <div className="group relative mb-3 break-inside-avoid overflow-hidden rounded-2xl bg-surface shadow-[0_1px_2px_rgba(23,25,29,0.1)] transition-shadow duration-300 hover:shadow-[0_10px_26px_rgba(23,25,29,0.14)]">
+    <div
+      ref={cardRef}
+      className="snag-card group relative mb-3 break-inside-avoid overflow-hidden rounded-2xl bg-surface shadow-[0_1px_2px_rgba(23,25,29,0.1)] transition-shadow duration-300 hover:shadow-[0_10px_26px_rgba(23,25,29,0.14)]"
+    >
       <img
         src={snag.image}
         alt=""

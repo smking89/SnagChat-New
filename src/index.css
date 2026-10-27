@@ -38,6 +38,47 @@
   }
 }
 
+/* Feed cards: a softer squash than the icons, so the artwork stays readable. */
+@keyframes card-bounce {
+  0% {
+    transform: scale(1, 1);
+  }
+  26% {
+    transform: scale(1.045, 0.955);
+  }
+  50% {
+    transform: scale(0.978, 1.022);
+  }
+  70% {
+    transform: scale(1.012, 0.99);
+  }
+  86% {
+    transform: scale(0.996, 1.004);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+/* The arrival spring when a card scrolls into view. */
+@keyframes card-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.94);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(0) scale(1.018);
+  }
+  76% {
+    transform: translateY(0) scale(0.994);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* Same shape under a second name so a press can restart it mid-hover. */
 @keyframes icon-rubber-press {
   0% {
@@ -143,6 +184,20 @@
   /* Press: separate name so a tap restarts the bounce instead of being cut off. */
   .icon-rubber.is-rubbering {
     animation: icon-rubber-press 520ms cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+
+  .snag-card {
+    transform-origin: 50% 62%;
+  }
+
+  /* Hover and press, driven from src/lib/cardBounce.ts. */
+  .snag-card.is-bouncing {
+    animation: card-bounce 560ms cubic-bezier(0.34, 1.42, 0.64, 1);
+  }
+
+  /* Scrolling a card back into view springs it up into place. */
+  .snag-card.is-entering {
+    animation: card-pop 620ms cubic-bezier(0.22, 1.15, 0.36, 1) both;
   }
 }
 
