@@ -15,7 +15,8 @@ export function FilterRail({ active, top, onChange }: FilterRailProps) {
       <div
         role="group"
         aria-label="Filter snags"
-        className="no-scrollbar flex items-center gap-2 overflow-x-auto py-3"
+        data-swipe-ignore="true"
+        className="no-scrollbar flex items-center gap-2 overflow-x-auto overscroll-x-contain py-3"
       >
         {CATEGORIES.map((category) => {
           const isActive = category === active;

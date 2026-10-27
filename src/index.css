@@ -60,6 +60,29 @@
   }
 }
 
+/* Feed slide when a tab is switched by swipe or by chip. */
+@keyframes feed-in-right {
+  from {
+    opacity: 0.35;
+    transform: translateX(26px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes feed-in-left {
+  from {
+    opacity: 0.35;
+    transform: translateX(-26px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 /* The heart that pops when a post is double tapped. */
 @keyframes heart-burst {
   0% {
@@ -126,11 +149,29 @@
     -webkit-text-size-adjust: 100%;
     scroll-behavior: smooth;
     color-scheme: light;
+    /* Scaled cards and the feed's slide keep their overflow to themselves. */
+    overflow-x: clip;
   }
 
   body {
     @apply bg-white font-sans text-ink antialiased;
     text-rendering: optimizeLegibility;
+    overflow-x: clip;
+    overscroll-behavior-x: none;
+  }
+
+  /*
+   * Touch targets opt out of the browser's double-tap-to-zoom, which otherwise
+   * fights the feed's double-tap-to-like and pans the whole page sideways.
+   * Pinch zoom stays available.
+   */
+  button,
+  a,
+  [role="button"],
+  label,
+  input,
+  textarea {
+    touch-action: manipulation;
   }
 
   ::selection {
@@ -212,6 +253,17 @@
 
   .heart-burst {
     animation: heart-burst 720ms cubic-bezier(0.22, 1.4, 0.4, 1) both;
+  }
+
+  /* Mobile only: the swipe gesture has no desktop equivalent. */
+  @media (max-width: 1023px) {
+    .feed-swipe-right {
+      animation: feed-in-right 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .feed-swipe-left {
+      animation: feed-in-left 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
   }
 
   /* Hover and press, driven from src/lib/cardBounce.ts. */

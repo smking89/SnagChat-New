@@ -24,12 +24,12 @@ type SnagCardProps = {
 
 const LONG_PRESS_MS = 480;
 /** Two taps inside this window count as a double tap. */
-const DOUBLE_TAP_MS = 300;
+const DOUBLE_TAP_MS = 260;
 /**
  * How long a single tap waits to see whether a second one arrives. Kept longer
  * than the double-tap window so the snag can never open a beat before the like.
  */
-const TAP_DELAY_MS = 330;
+const TAP_DELAY_MS = 290;
 const BURST_MS = 720;
 
 export function SnagCard({

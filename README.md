@@ -19,7 +19,8 @@ Stack: Vite, React 19, TypeScript, Tailwind CSS v4. Fonts (Inter, Plus Jakarta S
 ## What's here
 
 - **Feed** — full-bleed masonry, 2 columns on mobile, 3 on desktop, 12px gap, 16px card radius.
-- **Filters** — sticky category rail (For You, Clips, Loadouts, Screenshots, Squad Galleries) with black-and-white selected state.
+- **Filters** — sticky category rail (For You, Clips, Loadouts, Screenshots, Squad Galleries) with black-and-white selected state. On phones and tablets a swipe across the feed moves one tab left or right and the grid slides in from that side; the gesture is off above 1023px, stops at the ends of the rail, and swipes that start on the rail's own scroller are left to it (`useSwipe` in `src/lib/swipe.ts`, `nextCategory` in `src/data/snags.ts`).
+- **Touch handling** — cards and controls opt out of the browser's double-tap zoom (`touch-action: manipulation`), so a double tap likes the post instead of zooming the page, and the page clips horizontal overflow (`overflow-x: clip`) so scaled cards and the feed's slide can never pan the layout sideways. Pinch zoom still works.
 - **Search** — header search filters snags by title, game, creator or category.
 - **Snag view** — tap a card to open the snag: author, game logo, category, and like / comment / save / share counts.
 - **Game logos** — every post carries the game's own artwork from `src/data/games.ts`. The composer offers Rust, Minecraft, ARK: Survival Ascended, DayZ, Call of Duty, Palworld and Conan Exiles, plus **Other** for a free-text title; posts without a catalogued logo fall back to the name so nothing looks blank. Steam titles load the publisher's `logo.png` from their store CDN; Minecraft uses the bundled `public/games/minecraft.png`. Swap in licensed artwork in that file before shipping commercially.

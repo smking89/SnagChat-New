@@ -31,6 +31,19 @@ export const CATEGORIES = ["For You", "Clips", "Loadouts", "Screenshots", "Squad
 
 export type FeedFilter = (typeof CATEGORIES)[number];
 
+export type SwipeDirection = "left" | "right";
+
+/**
+ * The tab a swipe lands on: left goes forward through the rail, right goes back,
+ * and the ends of the rail return null so the gesture stops instead of wrapping.
+ */
+export function nextCategory(current: FeedFilter, direction: SwipeDirection): FeedFilter | null {
+  const index = CATEGORIES.indexOf(current);
+  const next = direction === "left" ? index + 1 : index - 1;
+  if (next < 0 || next >= CATEGORIES.length) return null;
+  return CATEGORIES[next];
+}
+
 export const COVER_PRESETS: { id: string; label: string; image: string; aspect: string }[] = [
   { id: "neon", label: "Neon district", image: "/snags/neon-district.jpg", aspect: "3 / 4" },
   { id: "arcade", label: "Arcade run", image: "/snags/arcade-run.jpg", aspect: "1 / 1" },

@@ -20,7 +20,14 @@ import { SEED_COMMENTS, SEED_LIKES, SEED_SAVES, SEED_SHARES, type Comment } from
 import { COPYRIGHT_YEAR, LEGAL_DOCS, findLegalDoc } from "./data/legal";
 import { SEED_NOTIFICATIONS, type AppNotification } from "./data/notifications";
 import { findPlayer, findPlayerId, ME, PLAYERS, type Player } from "./data/players";
-import { SEED_SNAGS, type FeedFilter, type Snag, type SnagDraft } from "./data/snags";
+import {
+  CATEGORIES,
+  nextCategory,
+  SEED_SNAGS,
+  type FeedFilter,
+  type Snag,
+  type SnagDraft,
+} from "./data/snags";
 import {
   canSeeGallery,
   SEED_INVITES,
@@ -41,6 +48,7 @@ import { deleteAccount, findAccount, handleForEmail, type Session } from "./lib/
 import { downloadJson } from "./lib/export";
 import type { FollowPermission, InvitePermission } from "./lib/settings";
 import { readShareTarget, type ShareTarget } from "./lib/share";
+import { useSwipe } from "./lib/swipe";
 import { usePersistentState } from "./lib/storage";
 import type { NavTab } from "./types";
 
@@ -105,6 +113,8 @@ export default function App() {
   const [composeSquadId, setComposeSquadId] = useState<string | null>(null);
   const [editingSnag, setEditingSnag] = useState<Snag | null>(null);
   const [headerHeight, setHeaderHeight] = useState(64);
+  /** Which way the feed slides when the tab changes. */
+  const [feedMotion, setFeedMotion] = useState<"left" | "right">("right");
   const [stack, setStack] = useState<ScreenState[]>([]);
   const [legalDocId, setLegalDocId] = useState<string | null>(null);
 
@@ -226,6 +236,22 @@ export default function App() {
       setActiveTab((tab) => (tab === "messages" || tab === "profile" || tab === "squads" ? "home" : tab));
     }
   };
+
+  /** Moves one tab along, the way a swipe does, and slides the feed that way. */
+  const shiftFilter = (direction: "left" | "right") => {
+    const next = nextCategory(filter, direction);
+    if (!next) return;
+
+    setFeedMotion(direction === "left" ? "right" : "left");
+    setFilter(next);
+  };
+
+  const selectFilter = (next: FeedFilter) => {
+    setFeedMotion(CATEGORIES.indexOf(next) > CATEGORIES.indexOf(filter) ? "right" : "left");
+    setFilter(next);
+  };
+
+  const feedSwipe = useSwipe(shiftFilter, activeTab === "home" && stack.length === 0);
 
   const openProfile = (playerIdOrHandle: string) => {
     pushScreen({ kind: "profile", playerId: findPlayerId(playerIdOrHandle) });
@@ -741,7 +767,7 @@ export default function App() {
         onOpenNotifications={() => pushScreen({ kind: "notifications" })}
       />
 
-      <main>
+      <main ref={feedSwipe}>
         <section className="mx-auto max-w-[1080px] px-4 pt-8 sm:px-6 sm:pt-12">
           <div className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden="true" />
@@ -757,7 +783,7 @@ export default function App() {
         </section>
 
         <div className="mx-auto max-w-[1080px] px-4 sm:px-6">
-          <FilterRail active={filter} top={headerHeight} onChange={setFilter} />
+          <FilterRail active={filter} top={headerHeight} onChange={selectFilter} />
 
           <section id="feed" ref={feedRef} aria-label="Snag feed" className="scroll-mt-[88px] pt-5">
             <div className="mb-4 flex items-end justify-between gap-4">
@@ -768,6 +794,7 @@ export default function App() {
                 <p className="mt-1 text-[11px] text-muted">
                   {visibleSnags.length} {visibleSnags.length === 1 ? "snag" : "snags"} · tap to open, hold to
                   quick-share
+                  <span className="lg:hidden"> · swipe between tabs</span>
                 </p>
               </div>
               {filter !== "For You" || query ? (
@@ -782,8 +809,9 @@ export default function App() {
             </div>
 
             {visibleSnags.length > 0 ? (
-              <div className="columns-2 [column-gap:12px] md:columns-3">
-                {visibleSnags.map((snag) => (
+              <div key={filter} className={`feed-swipe feed-swipe-${feedMotion}`}>
+                <div className="columns-2 [column-gap:12px] md:columns-3">
+                  {visibleSnags.map((snag) => (
                   <SnagCard
                     key={snag.id}
                     snag={snag}
@@ -799,7 +827,8 @@ export default function App() {
                     onToggleLike={(item) => toggleLike(item.id)}
                     onToggleSave={(item) => toggleSave(item.id)}
                   />
-                ))}
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-[#e2e5e9] px-5 py-14 text-center">
