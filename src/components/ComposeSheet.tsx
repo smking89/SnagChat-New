@@ -10,7 +10,7 @@ import { Icon } from "./Icon";
 import { Sheet } from "./Sheet";
 import { TagComposer } from "./TagComposer";
 
-const COMPOSE_CATEGORIES: SnagCategory[] = ["Clips", "Loadouts", "Skins", "Screenshots", "Squad Galleries"];
+const COMPOSE_CATEGORIES: SnagCategory[] = ["Clips", "Loadouts", "Skins", "Builds", "Squad Galleries"];
 
 /** An MP4 waiting to be posted, plus the poster frame that stands in for it. */
 type ClipDraft = {
@@ -145,7 +145,7 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
           <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
             {squad
               ? "Only squad members see this in the gallery."
-              : "Drop a clip, loadout or screenshot into your feed."}
+              : "Drop a clip, loadout or base build into your feed."}
           </p>
         </div>
         <button
@@ -221,11 +221,6 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
                 }`}
               >
                 <img src={upload.image} alt="" className="h-full w-full object-cover" draggable={false} />
-                {upload.isGif ? (
-                  <span className="absolute bottom-1 left-1 rounded bg-ink/85 px-1 py-0.5 text-[8px] font-bold uppercase tracking-[0.08em] text-white">
-                    GIF
-                  </span>
-                ) : null}
                 {usingUpload ? (
                   <span className="absolute right-1.5 top-1.5 grid h-5 w-5 place-items-center rounded-full bg-white text-ink">
                     <Icon name="check" size={12} strokeWidth={2.6} />
@@ -293,7 +288,7 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
           ) : upload ? (
             <div className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-surface px-2.5 py-2">
               <p className="min-w-0 truncate text-[10.5px] text-muted">
-                {upload.name} · {upload.width} × {upload.height} px{upload.isGif ? " · GIF" : ""}
+                {upload.name} · {upload.width} × {upload.height} px
               </p>
               <button
                 type="button"

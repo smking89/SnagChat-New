@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import type { FrameUse } from "../data/frames";
 import { findPlayer, type Player } from "../data/players";
 import {
   formatRelative,
@@ -15,6 +16,7 @@ import {
   type ThreadMode,
 } from "../data/threads";
 import { Avatar } from "./Avatar";
+import { Nameplate } from "./FrameArt";
 import { Icon } from "./Icon";
 import { Screen, ScreenHeader } from "./Screen";
 
@@ -24,6 +26,9 @@ type InboxScreenProps = {
   suggestions: Player[];
   onClose: () => void;
   onOpenThread: (playerId: string) => void;
+  /** Purchased frames worn by each contact. */
+  frameFor?: (playerId: string) => FrameUse | undefined;
+  nameplateFor?: (playerId: string) => FrameUse | undefined;
 };
 
 /** Small label for how a thread's messages behave. */
@@ -38,7 +43,15 @@ function ModeBadge({ mode }: { mode: ThreadMode }) {
   );
 }
 
-export function InboxScreen({ threads, unreadTotal, suggestions, onClose, onOpenThread }: InboxScreenProps) {
+export function InboxScreen({
+  threads,
+  unreadTotal,
+  suggestions,
+  onClose,
+  onOpenThread,
+  frameFor,
+  nameplateFor,
+}: InboxScreenProps) {
   const rows = [...threads]
     .map((thread) => ({ thread, player: findPlayer(thread.playerId) }))
     .filter((row): row is { thread: Thread; player: Player } => Boolean(row.player))
@@ -74,7 +87,14 @@ export function InboxScreen({ threads, unreadTotal, suggestions, onClose, onOpen
                   onClick={() => onOpenThread(player.id)}
                   className="flex w-16 shrink-0 flex-col items-center gap-1.5"
                 >
-                  <Avatar name={player.name} size={48} tone="soft" src={player.avatar} online={player.online} />
+                  <Avatar
+                    name={player.name}
+                    size={48}
+                    tone="soft"
+                    src={player.avatar}
+                    online={player.online}
+                    frame={frameFor?.(player.id)}
+                  />
                   <span className="w-full truncate text-center text-[10px] font-semibold text-[#4d535c]">
                     @{player.handle}
                   </span>
@@ -98,15 +118,29 @@ export function InboxScreen({ threads, unreadTotal, suggestions, onClose, onOpen
                     onClick={() => onOpenThread(thread.playerId)}
                     className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-surface"
                   >
-                    <Avatar name={player.name} size={48} tone="soft" src={player.avatar} online={player.online} />
+                    <Avatar
+                      name={player.name}
+                      size={48}
+                      tone="soft"
+                      src={player.avatar}
+                      online={player.online}
+                      frame={frameFor?.(player.id)}
+                    />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-baseline justify-between gap-3">
                         <span className="flex min-w-0 items-center gap-1.5 truncate text-[13.5px] font-bold tracking-[-0.01em]">
-                          <span className="truncate">{player.name}</span>
-                          {player.verified ? (
-                            <Icon name="verified" size={13} className="shrink-0 text-[#1d9bf0]" />
-                          ) : null}
-                          <span className="shrink-0 text-[11px] font-medium text-muted">@{player.handle}</span>
+                          <Nameplate
+                            text={player.name}
+                            use={nameplateFor?.(player.id)}
+                            className="min-w-0"
+                            textClassName="truncate"
+                          />
+                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-muted">
+                            @{player.handle}
+                            {player.verified ? (
+                              <Icon name="verified" size={12} className="shrink-0 text-[#1d9bf0]" />
+                            ) : null}
+                          </span>
                         </span>
                         <span className="shrink-0 text-[10px] font-medium text-faint">
                           {formatRelative(thread.updatedAt)}
@@ -164,6 +198,9 @@ type ThreadScreenProps = {
   messages: ThreadMessage[];
   mode: ThreadMode;
   myAvatar?: string;
+  playerFrame?: FrameUse;
+  playerNameplate?: FrameUse;
+  myFrame?: FrameUse;
   onClose: () => void;
   onOpenProfile: () => void;
   onSend: (text: string) => void;
@@ -179,6 +216,8 @@ function MessageBubble({
   message,
   player,
   myAvatar,
+  playerFrame,
+  myFrame,
   mode,
   revealed,
   onReveal,
@@ -187,6 +226,8 @@ function MessageBubble({
   message: ThreadMessage;
   player: Player;
   myAvatar?: string;
+  playerFrame?: FrameUse;
+  myFrame?: FrameUse;
   mode: ThreadMode;
   revealed: boolean;
   onReveal: () => void;
@@ -199,9 +240,16 @@ function MessageBubble({
   return (
     <div className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
       {mine ? (
-        <Avatar name="You" size={24} tone="brand" src={myAvatar} className="mb-1" />
+        <Avatar name="You" size={24} tone="brand" src={myAvatar} frame={myFrame} className="mb-1" />
       ) : (
-        <Avatar name={player.name} size={24} tone="soft" src={player.avatar} className="mb-1" />
+        <Avatar
+          name={player.name}
+          size={24}
+          tone="soft"
+          src={player.avatar}
+          frame={playerFrame}
+          className="mb-1"
+        />
       )}
 
       {hidden ? (
@@ -278,6 +326,9 @@ export function ThreadScreen({
   messages,
   mode,
   myAvatar,
+  playerFrame,
+  playerNameplate,
+  myFrame,
   onClose,
   onOpenProfile,
   onSend,
@@ -324,19 +375,35 @@ export function ThreadScreen({
             className="flex min-w-0 items-center gap-2.5 text-left"
             aria-label={`Open ${player.name}'s profile`}
           >
-            <Avatar name={player.name} size={32} tone="soft" src={player.avatar} online={player.online} />
+            <Avatar
+              name={player.name}
+              size={32}
+              tone="soft"
+              src={player.avatar}
+              online={player.online}
+              frame={playerFrame}
+            />
             <span className="min-w-0">
               <span
                 id="thread-title"
                 className="flex items-center gap-1 font-display text-[14px] font-extrabold leading-tight tracking-[-0.02em]"
               >
-                <span className="truncate">{player.name}</span>
+                {playerNameplate ? (
+                  <Nameplate
+                    text={player.name}
+                    use={playerNameplate}
+                    textClassName="truncate"
+                  />
+                ) : (
+                  <span className="truncate">{player.name}</span>
+                )}
+              </span>
+              <span className="flex items-center gap-1 text-[10px] font-medium text-muted">
+                <span className="truncate">@{player.handle}</span>
                 {player.verified ? (
                   <Icon name="verified" size={12} className="shrink-0 text-[#1d9bf0]" />
                 ) : null}
-              </span>
-              <span className="block truncate text-[10px] font-medium text-muted">
-                @{player.handle} · {player.online ? "online" : "offline"}
+                <span className="shrink-0">· {player.online ? "online" : "offline"}</span>
               </span>
             </span>
           </button>
@@ -439,6 +506,8 @@ export function ThreadScreen({
                 message={message}
                 player={player}
                 myAvatar={myAvatar}
+                playerFrame={playerFrame}
+                myFrame={myFrame}
                 mode={mode}
                 revealed={revealed.includes(message.id)}
                 onReveal={() => reveal(message)}

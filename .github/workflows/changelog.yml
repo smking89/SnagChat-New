@@ -1,0 +1,45 @@
+name: Changelog
+
+# Every push to main is appended to CHANGELOG.md, so the file tracks the repo
+# without anyone remembering to update it. The follow-up commit carries
+# "[skip changelog]" so this workflow does not run again on its own push.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: changelog-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changelog:
+    if: ${{ !contains(github.event.head_commit.message, '[skip changelog]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the pushed commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Add this push to the changelog
+        run: node scripts/changelog.mjs --from "${{ github.event.before }}" --to "${{ github.sha }}"
+
+      - name: Commit the changelog
+        run: |
+          if git diff --quiet -- CHANGELOG.md; then
+            echo "Changelog already up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "Update changelog [skip changelog]"
+          git push

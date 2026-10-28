@@ -1,1 +1,1 @@
-export type NavTab = "home" | "discover" | "messages" | "squads" | "profile";
+export type NavTab = "home" | "discover" | "messages" | "squads" | "shop" | "profile";

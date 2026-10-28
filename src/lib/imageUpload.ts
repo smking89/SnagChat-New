@@ -6,12 +6,11 @@ import {
   formatBytes,
   formatClipLength,
 } from "./clipLimits";
+import { assertMp4Container, sanitizeImageFile } from "./fileSandbox";
 
 type Target = { width: number; height: number };
 
-const MAX_BYTES = 12 * 1024 * 1024;
 const COVER_MAX_BYTES = 6 * 1024 * 1024;
-const GIF_MAX_BYTES = 1.5 * 1024 * 1024;
 const COVER_MAX_DIMENSION = 1200;
 
 export const AVATAR_SIZE = { width: 320, height: 320 };
@@ -19,9 +18,9 @@ export const BANNER_SIZE = { width: 1200, height: 380 };
 
 /** The recommended upload sizes shown in the composer and profile editor. */
 export const UPLOAD_HINTS = {
-  cover: "Recommended 1080 × 1350 px (4:5). JPG, PNG, WebP or GIF up to 1.5 MB, or an MP4 clip.",
-  avatar: "Recommended 320 × 320 px, square. JPG, PNG, WebP, GIF or MP4.",
-  banner: "Recommended 1200 × 380 px, wide. JPG, PNG, WebP, GIF or MP4.",
+  cover: "Recommended 1080 × 1350 px (4:5). JPG, PNG or WebP up to 6 MB, or an MP4 clip. Images are rebuilt pixel by pixel before saving, and a GIF becomes a still.",
+  avatar: "Recommended 320 × 320 px, square. JPG, PNG, WebP or MP4. Rebuilt pixel by pixel before saving; GIFs become a still.",
+  banner: "Recommended 1200 × 380 px, wide. JPG, PNG, WebP or MP4. Rebuilt pixel by pixel before saving; GIFs become a still.",
   clipProfile: `Profile MP4s follow the same clip limits: up to ${formatBytes(
     CLIP_LIMITS.maxBytes,
   )}, from ${CLIP_LIMITS.minSeconds}s to ${CLIP_LIMITS.maxSeconds}s. They loop, and their first frame becomes the still cover.`,
@@ -49,22 +48,6 @@ async function loadDrawable(file: File): Promise<ImageBitmap | HTMLImageElement>
   }
 }
 
-/**
- * Crops an uploaded image to the target aspect ratio and returns a compressed
- * data URL small enough to keep in localStorage.
- */
-async function fileToRawDataUrl(file: File): Promise<string> {
-  return await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") resolve(reader.result);
-      else reject(new Error("That file could not be read."));
-    };
-    reader.onerror = () => reject(new Error("That file could not be read."));
-    reader.readAsDataURL(file);
-  });
-}
-
 function releaseDrawable(source: ImageBitmap | HTMLImageElement) {
   if ("close" in source && typeof source.close === "function") source.close();
 }
@@ -81,48 +64,19 @@ export type CoverUpload = {
   aspect: string;
   width: number;
   height: number;
-  isGif: boolean;
 };
 
 /**
- * Cover art for a snag. Still images are scaled down and re-encoded, while GIFs
- * are stored as-is so they keep animating in the feed.
+ * Cover art for a snag. The file goes through the upload sandbox first, so only
+ * rebuilt pixels are ever scaled and stored; a GIF arrives here as a still.
  */
 export async function fileToCover(file: File): Promise<CoverUpload> {
-  if (!file.type.startsWith("image/")) {
-    throw new Error("Choose an image or GIF file.");
-  }
-
-  const isGif = file.type === "image/gif";
-
-  if (isGif) {
-    if (file.size > GIF_MAX_BYTES) {
-      throw new Error("GIFs need to be 1.5 MB or smaller. Try a shorter clip or a smaller file.");
-    }
-
-    const source = await loadDrawable(file);
-    const width = source.width;
-    const height = source.height;
-    releaseDrawable(source);
-
-    if (!width || !height) {
-      throw new Error("That GIF could not be read.");
-    }
-
-    return {
-      image: await fileToRawDataUrl(file),
-      aspect: aspectFor(width, height),
-      width,
-      height,
-      isGif: true,
-    };
-  }
-
   if (file.size > COVER_MAX_BYTES) {
     throw new Error("That image is larger than 6 MB. Try a smaller file.");
   }
 
-  const source = await loadDrawable(file);
+  const clean = await sanitizeImageFile(file);
+  const source = await loadDrawable(clean.file);
   const width = source.width;
   const height = source.height;
 
@@ -153,37 +107,20 @@ export async function fileToCover(file: File): Promise<CoverUpload> {
     aspect: aspectFor(outWidth, outHeight),
     width: outWidth,
     height: outHeight,
-    isGif: false,
   };
 }
 
 /**
- * Profile photo or banner. GIFs are kept as they are so they stay animated, and
- * stills are cropped to the target ratio the way covers are.
+ * Profile photo or banner. Stills and GIFs take the same path: the sandbox
+ * rebuilds the pixels, then the result is cropped to the target ratio.
  */
 export async function fileToProfileImage(file: File, target: Target): Promise<string> {
-  if (file.type === "image/gif") {
-    if (file.size > GIF_MAX_BYTES) {
-      throw new Error("GIFs need to be 1.5 MB or smaller. Try a shorter or smaller loop.");
-    }
-    return await fileToRawDataUrl(file);
-  }
-
   return await fileToDataUrl(file, target);
 }
 
 export async function fileToDataUrl(file: File, target: Target): Promise<string> {
-  if (!file.type.startsWith("image/")) {
-    throw new Error("Choose an image file (JPG, PNG or WebP).");
-  }
-  if (file.type === "image/gif") {
-    throw new Error("GIFs are handled by fileToProfileImage — use that for profile art.");
-  }
-  if (file.size > MAX_BYTES) {
-    throw new Error("That image is larger than 12 MB.");
-  }
-
-  const source = await loadDrawable(file);
+  const clean = await sanitizeImageFile(file);
+  const source = await loadDrawable(clean.file);
   const sourceWidth = source.width;
   const sourceHeight = source.height;
 
@@ -346,6 +283,7 @@ async function grabPoster(video: HTMLVideoElement, target?: Target): Promise<str
 export async function fileToClip(file: File): Promise<ClipUpload> {
   const fileCheck = checkClipFile({ name: file.name, type: file.type, bytes: file.size });
   if (!fileCheck.ok) throw new Error(fileCheck.reason);
+  await assertMp4Container(file);
 
   const { video, url } = await loadVideo(file);
   const probe = { duration: video.duration, width: video.videoWidth, height: video.videoHeight };
@@ -394,6 +332,7 @@ export type ProfileClipUpload = {
 export async function fileToProfileClip(file: File, target: Target): Promise<ProfileClipUpload> {
   const fileCheck = checkClipFile({ name: file.name, type: file.type, bytes: file.size });
   if (!fileCheck.ok) throw new Error(fileCheck.reason);
+  await assertMp4Container(file);
 
   const { video, url } = await loadVideo(file);
   const probe = { duration: video.duration, width: video.videoWidth, height: video.videoHeight };

@@ -26,7 +26,7 @@ type TagComposerProps = {
 };
 
 /** Hashtags that get offered while someone is typing a "#". */
-const POPULAR_HASHTAGS = ["clip", "loadout", "skin", "screenshot", "squad", "gg", "pvp", "base", "edit"];
+const POPULAR_HASHTAGS = ["clip", "loadout", "skin", "base", "build", "squad", "gg", "pvp", "edit"];
 
 /**
  * Tag row for writing a post: tap a chip to add it, tap it again to take it

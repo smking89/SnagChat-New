@@ -81,7 +81,7 @@ const INTEREST_OPTIONS = [
   "Valorant",
   "Clips",
   "Loadouts",
-  "Screenshots",
+  "Builds",
   "Squad Galleries",
 ];
 
@@ -444,7 +444,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
             <button
               type="submit"
               disabled={!signInReady || busy}
-              className="mt-5 h-14 w-full rounded-[14px] bg-white text-[15px] font-bold text-ink transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-white disabled:text-ink"
+              className="mt-5 h-14 w-full rounded-[14px] bg-white text-[15px] font-bold text-black transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-white disabled:text-black"
             >
               {busy ? "Checking…" : "Sign in"}
             </button>
@@ -459,7 +459,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                   type="button"
                   onClick={() => startProvider(provider)}
                   aria-label={`Continue with ${PROVIDER_LABELS[provider]}`}
-                  className="flex h-[62px] flex-col items-center justify-center gap-1.5 rounded-[14px] bg-white text-[11.5px] font-bold text-[#7a00ae] shadow-[0_1px_2px_rgba(0,0,0,0.12)] transition-colors hover:bg-white/90 active:scale-[0.98]"
+                  className="flex h-[62px] flex-col items-center justify-center gap-1.5 rounded-[14px] bg-white text-[11.5px] font-bold text-black shadow-[0_1px_2px_rgba(0,0,0,0.12)] transition-colors hover:bg-white/90 active:scale-[0.98]"
                 >
                   <span
                     aria-hidden="true"
@@ -968,7 +968,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                 type="button"
                 onClick={next}
                 disabled={busy || (!canContinue && step !== 7)}
-                className="h-14 flex-1 rounded-[14px] bg-white text-[15px] font-bold text-ink transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-white disabled:text-ink"
+                className="h-14 flex-1 rounded-[14px] bg-white text-[15px] font-bold text-black transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-white disabled:text-black"
               >
                 {busy
                   ? "Creating…"

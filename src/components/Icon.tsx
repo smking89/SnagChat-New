@@ -15,6 +15,7 @@ type IconName =
   | "edit"
   | "heart"
   | "share"
+  | "story"
   | "bookmark"
   | "bell"
   | "more"
@@ -27,7 +28,8 @@ type IconName =
   | "lock"
   | "settings"
   | "trash"
-  | "download";
+  | "download"
+  | "shop";
 
 type IconProps = {
   name: IconName;
@@ -35,6 +37,12 @@ type IconProps = {
   strokeWidth?: number;
   className?: string;
   filled?: boolean;
+  /**
+   * Draw the inline SVG even where a PNG mask exists. The nav keeps the supplied
+   * artwork; places that must never lose their glyph (like the welcome list) use
+   * this so a missing image request cannot leave a blank icon.
+   */
+  inline?: boolean;
 };
 
 const PATHS: Record<IconName, ReactNode> = {
@@ -60,6 +68,13 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M12 5.6v12.8" />
       <path d="M5.6 12h12.8" />
+    </>
+  ),
+  story: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 8.4v7.2" />
+      <path d="M8.4 12h7.2" />
     </>
   ),
   users: (
@@ -133,6 +148,12 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M12 4.2v10.4" />
       <path d="m7.8 10.6 4.2 4.2 4.2-4.2" />
       <path d="M5 18.6h14" />
+    </>
+  ),
+  shop: (
+    <>
+      <path d="M5.4 8.4h13.2l-1 11.2a1.8 1.8 0 0 1-1.8 1.6H8.2a1.8 1.8 0 0 1-1.8-1.6z" />
+      <path d="M8.9 8.4V6.9a3.1 3.1 0 0 1 6.2 0v1.5" />
     </>
   ),
   lock: (
@@ -213,8 +234,15 @@ const MASK_ICONS: Partial<Record<IconName, string>> = {
   dm: "/brand/icons/dm.png",
 };
 
-export function Icon({ name, size = 20, strokeWidth = 1.8, className, filled = false }: IconProps) {
-  const maskSrc = MASK_ICONS[name];
+export function Icon({
+  name,
+  size = 20,
+  strokeWidth = 1.8,
+  className,
+  filled = false,
+  inline = false,
+}: IconProps) {
+  const maskSrc = inline ? undefined : MASK_ICONS[name];
 
   if (maskSrc) {
     return (

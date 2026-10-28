@@ -8,7 +8,9 @@ type BottomNavProps = {
   unreadCount: number;
 };
 
-const ITEMS: { tab: NavTab; label: string; icon: "home" | "compass" | "dm" | "user" }[] = [
+type NavIcon = "home" | "compass" | "dm" | "user";
+
+const ITEMS: { tab: NavTab; label: string; icon: NavIcon }[] = [
   { tab: "home", label: "Home", icon: "home" },
   { tab: "discover", label: "Discover", icon: "compass" },
   { tab: "messages", label: "Messages", icon: "dm" },
@@ -23,7 +25,7 @@ function NavItem({
   onClick,
 }: {
   label: string;
-  icon: "home" | "compass" | "dm" | "user";
+  icon: NavIcon;
   isActive: boolean;
   badge?: number;
   onClick: () => void;
@@ -33,12 +35,12 @@ function NavItem({
       type="button"
       onClick={onClick}
       aria-current={isActive ? "page" : undefined}
-      className={`flex flex-col items-center gap-1 rounded-xl py-1 text-[11.5px] font-semibold transition-colors ${
+      className={`flex flex-col items-center gap-1 rounded-xl py-1 text-[10.5px] font-semibold transition-colors ${
         isActive ? "text-brand" : "text-ink hover:text-brand"
       }`}
     >
       <span className="relative grid h-8 w-10 place-items-center">
-        <Icon name={icon} size={25} strokeWidth={isActive ? 2.1 : 1.8} />
+        <Icon name={icon} size={24} strokeWidth={isActive ? 2.1 : 1.8} />
         {badge > 0 ? (
           <span className="absolute -right-0.5 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-brand px-1 text-[9px] font-bold leading-none text-white">
             {badge}
@@ -59,7 +61,7 @@ export function BottomNav({ activeTab, onNavigate, onCreate, unreadCount }: Bott
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 backdrop-blur-xl lg:hidden"
       style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
     >
-      <div className="mx-auto grid max-w-[520px] grid-cols-5 items-center px-2 pt-2">
+      <div className="mx-auto grid max-w-[560px] grid-cols-5 items-center px-2 pt-2">
         <NavItem {...home} isActive={activeTab === home.tab} onClick={() => onNavigate(home.tab)} />
         <NavItem {...discover} isActive={activeTab === discover.tab} onClick={() => onNavigate(discover.tab)} />
 

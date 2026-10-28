@@ -342,7 +342,7 @@ export function SquadScreen({
                 <p className="text-[12.5px] font-semibold">Nothing in the gallery yet</p>
                 <p className="mx-auto mt-1 max-w-[30ch] text-[11.5px] leading-relaxed text-muted">
                   {isMember
-                    ? "Post a clip, loadout or screenshot for the squad."
+                    ? "Post a clip, loadout or base build for the squad."
                     : squad.visibility === "private"
                       ? "This gallery is private — only members can see its posts."
                       : "Only members can add posts to this gallery."}
@@ -584,7 +584,7 @@ export function SquadScreen({
       {confirmDelete ? (
         <ConfirmSheet
           title={`Delete ${squad.name}?`}
-          body="This removes the squad, its roster and every post in its gallery for everyone, and clears any pending invites. Only the owner can do this, and it cannot be undone."
+          body="This removes the squad, its roster and every post in its gallery for everyone, and clears any pending invites. Only the owner can do this. You can undo it for a few seconds afterwards."
           confirmLabel="Delete squad"
           tone="danger"
           onConfirm={() => {

@@ -1,4 +1,4 @@
-export type SnagCategory = "Clips" | "Loadouts" | "Skins" | "Screenshots" | "Squad Galleries";
+export type SnagCategory = "Clips" | "Loadouts" | "Skins" | "Builds" | "Squad Galleries";
 
 export type Snag = {
   id: string;
@@ -30,7 +30,7 @@ export type SnagDraft = {
   squadId?: string;
 };
 
-export const CATEGORIES = ["For You", "Clips", "Loadouts", "Skins", "Screenshots", "Squad Galleries"] as const;
+export const CATEGORIES = ["For You", "Clips", "Loadouts", "Skins", "Builds", "Squad Galleries"] as const;
 
 export type FeedFilter = (typeof CATEGORIES)[number];
 
@@ -91,9 +91,9 @@ export const SEED_SNAGS: Snag[] = [
   },
   {
     id: "snag-03",
-    title: "Last light on the ridge #dayz @kirav",
+    title: "Ridge outpost, no HUD #dayz #base @kirav",
     game: "DayZ",
-    category: "Screenshots",
+    category: "Builds",
     creator: "KiraV",
     postedAt: "41m",
     image: "/snags/ridge-light.jpg",
@@ -112,9 +112,9 @@ export const SEED_SNAGS: Snag[] = [
   },
   {
     id: "snag-05",
-    title: "Empty road, 300 clicks to go #dayz #screenshot",
+    title: "Roadside wall at 300 clicks #dayz #base",
     game: "DayZ",
-    category: "Screenshots",
+    category: "Builds",
     creator: "Drew",
     postedAt: "2h",
     image: "/snags/desert-road.jpg",
@@ -133,9 +133,9 @@ export const SEED_SNAGS: Snag[] = [
   },
   {
     id: "snag-07",
-    title: "Fog sitting on the lake",
+    title: "Lakeside camp, third wipe running #base",
     game: "DayZ",
-    category: "Screenshots",
+    category: "Builds",
     creator: "Aster",
     postedAt: "4h",
     image: "/snags/lake-fog.jpg",
@@ -143,9 +143,9 @@ export const SEED_SNAGS: Snag[] = [
   },
   {
     id: "snag-08",
-    title: "Castle in the fog",
+    title: "Castle base in the fog #base",
     game: "Elden Ring",
-    category: "Screenshots",
+    category: "Builds",
     creator: "Mira",
     postedAt: "5h",
     image: "/snags/castle-fog.jpg",
@@ -208,9 +208,9 @@ export const SEED_SNAGS: Snag[] = [
   },
   {
     id: "snag-14",
-    title: "No HUD, just stars",
+    title: "Night watch on the north wall #base",
     game: "DayZ",
-    category: "Screenshots",
+    category: "Builds",
     creator: "Wren",
     postedAt: "1d",
     image: "/snags/stars.jpg",
@@ -218,9 +218,9 @@ export const SEED_SNAGS: Snag[] = [
   },
   {
     id: "snag-15",
-    title: "Summit at first light",
+    title: "Summit outpost at first light #base",
     game: "Skyrim",
-    category: "Screenshots",
+    category: "Builds",
     creator: "Kit",
     postedAt: "2d",
     image: "/snags/summit.jpg",

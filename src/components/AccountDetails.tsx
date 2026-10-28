@@ -74,7 +74,7 @@ export function AccountDetails({ accountEmail, isDemoSession, interests, onSignO
           onClick={onSignOut}
           className="mt-2 h-9 rounded-full border border-line px-3 text-[11px] font-semibold text-[#b3261e] transition-colors hover:border-[#f0c9c5]"
         >
-          Sign out
+          Log out
         </button>
       ) : null}
     </div>

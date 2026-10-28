@@ -1,4 +1,5 @@
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import type { FrameLoadout } from "../data/frames";
 import { formatCount, type Player } from "../data/players";
 import type { Snag } from "../data/snags";
 import { REGIONS } from "../data/regions";
@@ -17,6 +18,7 @@ import { CountUp } from "./CountUp";
 import { profileShareUrl, shareLink, type ShareOutcome } from "../lib/share";
 import { Avatar } from "./Avatar";
 import { ConfirmSheet } from "./ConfirmSheet";
+import { FrameLayer, Nameplate } from "./FrameArt";
 import { Icon } from "./Icon";
 import { ImageViewer } from "./ImageViewer";
 import { Screen, ScreenHeader } from "./Screen";
@@ -62,6 +64,10 @@ type ProfileScreenProps = {
   onManageDial?: () => void;
   onDownloadData?: () => void;
   onDeleteAccount?: () => void;
+  /** Frames this profile wears: avatar, banner and message nameplate. */
+  frames?: FrameLoadout;
+  /** Opens the shop's frame studio for your own profile. */
+  onOpenShop?: () => void;
 };
 
 function Stat({ value, label }: { value: number; label: string }) {
@@ -98,6 +104,8 @@ export function ProfileScreen({
   onManageDial,
   onDownloadData,
   onDeleteAccount,
+  frames,
+  onOpenShop,
 }: ProfileScreenProps) {
   const [editing, setEditing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -280,6 +288,16 @@ export function ProfileScreen({
               >
                 <Icon name="share" size={14} strokeWidth={2} />
               </button>
+              {isMe && onOpenShop ? (
+                <button
+                  type="button"
+                  onClick={onOpenShop}
+                  className="flex h-9 items-center gap-1.5 rounded-full border border-line px-3 text-[11.5px] font-semibold text-[#4d535c] transition-colors hover:border-[#d8dce1]"
+                >
+                  <Icon name="shop" size={14} />
+                  Shop
+                </button>
+              ) : null}
               {isMe ? (
                 <button
                   type="button"
@@ -296,7 +314,7 @@ export function ProfileScreen({
       />
 
       <div className="flex-1 overflow-y-auto pb-8">
-        <div className="relative h-32 overflow-hidden bg-brand-tint">
+        <div className="frame-host relative h-32 overflow-hidden bg-brand-tint">
           {bannerClipUrl ? (
             <video
               src={bannerClipUrl}
@@ -321,12 +339,14 @@ export function ProfileScreen({
             </>
           )}
 
+          <FrameLayer use={frames?.banner} target="banner" />
+
           {isMe || bannerSrc ? (
             <button
               type="button"
               onClick={() => openArt("banner")}
               aria-label={bannerSrc ? "View banner" : "Add a banner"}
-              className="absolute inset-0 flex items-end justify-end p-2"
+              className="absolute inset-0 z-20 flex items-end justify-end p-2"
             >
               <span className="rounded-full bg-[#080a0e]/60 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-md">
                 {busy === "banner" ? "Processing…" : bannerSrc ? "Tap to view" : "Add a banner"}
@@ -350,7 +370,10 @@ export function ProfileScreen({
                   tone={isMe ? "brand" : "soft"}
                   src={avatarSrc}
                   videoSrc={avatarClipUrl ?? undefined}
-                  online={player.online}
+                  /* The add-photo badge owns this corner while there is no photo,
+                     so the presence dot would sit underneath it. */
+                  online={player.online && !(isMe && !avatarSrc)}
+                  frame={frames?.avatar}
                   className="font-display ring-4 ring-white"
                 />
                 {isMe && !avatarSrc ? (
@@ -419,16 +442,21 @@ export function ProfileScreen({
 
             <h1
               id="profile-name"
-              className="mt-3 flex items-center gap-1.5 font-display text-[24px] font-extrabold leading-none tracking-[-0.045em]"
+              className="mt-3 flex min-w-0 items-center gap-1.5 font-display text-[24px] font-extrabold leading-none tracking-[-0.045em]"
             >
-              <span className="truncate">{player.name}</span>
-              {player.verified ? (
-                <span title="Verified player" className="shrink-0 text-[#1d9bf0]">
-                  <Icon name="verified" size={18} />
-                </span>
-              ) : null}
+              <Nameplate
+                text={player.name}
+                use={frames?.nameplate}
+                className="min-w-0"
+                textClassName="truncate"
+              />
             </h1>
-            <p className="mt-1.5 text-[12px] font-medium text-muted">@{player.handle}</p>
+            <p className="mt-1.5 flex min-w-0 items-center gap-1 text-[12px] font-medium text-muted">
+              <span className="truncate">@{player.handle}</span>
+              {player.verified ? (
+                <Icon name="verified" size={14} className="shrink-0 text-[#1d9bf0]" />
+              ) : null}
+            </p>
 
             {player.private && !editing ? (
               <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-ink px-2.5 py-1 text-[9.5px] font-bold uppercase tracking-[0.12em] text-white">
@@ -793,7 +821,7 @@ export function ProfileScreen({
                 <p className="text-[12.5px] font-semibold">No snags yet</p>
                 <p className="mx-auto mt-1 max-w-[32ch] text-[11.5px] leading-relaxed text-muted">
                   {isMe
-                    ? "Post a clip, loadout or screenshot and it lands here."
+                    ? "Post a clip, loadout or base build and it lands here."
                     : `${player.name} has not posted a snag yet.`}
                 </p>
               </div>
@@ -815,6 +843,7 @@ export function ProfileScreen({
             setSettingsOpen(false);
           }}
           onDelete={() => onDeleteAccount?.()}
+          onSignOut={() => onSignOut?.()}
           onManageDial={() => {
             setSettingsOpen(false);
             onManageDial?.();

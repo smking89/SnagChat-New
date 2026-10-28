@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import type { FrameUse } from "../data/frames";
 import { formatCount } from "../data/players";
 import type { Snag } from "../data/snags";
 import { useCardBounce } from "../lib/cardBounce";
@@ -6,6 +7,7 @@ import { useCardSwipe } from "../lib/cardSwipe";
 import { useClipUrl } from "../lib/clipStore";
 import { Avatar } from "./Avatar";
 import { CountUp } from "./CountUp";
+import { FrameLayer } from "./FrameArt";
 import { Icon } from "./Icon";
 import { RichText } from "./RichText";
 
@@ -31,6 +33,10 @@ type SnagCardProps = {
   isMine?: boolean;
   onEdit?: (snag: Snag) => void;
   onDelete?: (snag: Snag) => void;
+  /** The creator's purchased snag frame, if they own one. */
+  frame?: FrameUse;
+  /** The creator's avatar frame, worn by the author row. */
+  creatorFrame?: FrameUse;
 };
 
 /** How long "tap again" stays armed before the delete button resets itself. */
@@ -69,6 +75,8 @@ export function SnagCard({
   isMine = false,
   onEdit,
   onDelete,
+  frame,
+  creatorFrame,
 }: SnagCardProps) {
   const timer = useRef<number | null>(null);
   /** Set while another gesture (a long press or a swipe) has taken the tap. */
@@ -176,8 +184,13 @@ export function SnagCard({
     >
       {/* The swipe moves this wrapper, so the card's own spring stays untouched. */}
       <div ref={swipeRef} className="relative">
-        {/* Only the artwork lives in here; every label sits in the meta block below. */}
-        <div data-media="true" className="relative overflow-hidden">
+        {/*
+         * Every card keeps the same 4:5 frame, so the masonry columns line up
+         * instead of ending in a ragged edge. The source aspect is ignored here
+         * on purpose: object-cover crops the artwork rather than resizing the
+         * card, and the full frame is still shown in the snag view.
+         */}
+        <div data-media="true" className="frame-host relative aspect-[4/5] overflow-hidden">
           {clip ? (
             <video
               src={clip}
@@ -187,8 +200,7 @@ export function SnagCard({
               playsInline
               autoPlay
               preload="metadata"
-              style={{ aspectRatio: snag.aspect }}
-              className="block w-full bg-ink object-cover transition-transform duration-500 ease-out group-hover:scale-[1.035]"
+              className="block h-full w-full bg-ink object-cover transition-transform duration-500 ease-out group-hover:scale-[1.035]"
             />
           ) : (
             <img
@@ -197,8 +209,7 @@ export function SnagCard({
               loading="lazy"
               decoding="async"
               draggable={false}
-              style={{ aspectRatio: snag.aspect }}
-              className="block w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.035]"
+              className="block h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.035]"
             />
           )}
 
@@ -223,7 +234,7 @@ export function SnagCard({
           />
 
           {burst ? (
-            <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 grid place-items-center">
+            <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-50 grid place-items-center">
               <span className="heart-burst grid place-items-center text-white drop-shadow-[0_6px_18px_rgba(0,0,0,0.45)]">
                 <Icon name="heart" size={96} strokeWidth={1.5} filled />
               </span>
@@ -237,7 +248,7 @@ export function SnagCard({
           ) : null}
 
           {/* Glass outlines, not dark blocks: the artwork stays the subject. */}
-          <div className="absolute right-2.5 top-2.5 z-20 flex items-center gap-1.5">
+          <div className="absolute right-2.5 top-2.5 z-30 flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => onToggleLike(snag)}
@@ -274,43 +285,16 @@ export function SnagCard({
               {snag.duration}
             </span>
           ) : null}
-        </div>
 
-        {/* Everything readable lives here, under the media, where nothing clips it. */}
-        <div data-meta="true" className="px-3 pb-3 pt-2.5">
-          <div className="flex items-center justify-between gap-2">
-            {snag.sponsoredBy ? (
-              <span className="flex min-w-0 items-center gap-1.5 text-[10.5px] font-semibold text-muted">
-                <span className="truncate">Sponsored by {snag.sponsoredBy}</span>
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => onOpenProfile(snag.creatorId ?? snag.creator)}
-                aria-label={`Open ${snag.creator}'s profile`}
-                className="flex min-w-0 items-center gap-1.5 rounded-full text-[11px] font-semibold text-ink transition-colors hover:text-brand"
-              >
-                <Avatar name={snag.creator} size={22} tone="soft" src={creatorAvatar} />
-                <span className="truncate">@{snag.creator}</span>
-                {creatorVerified ? <Icon name="verified" size={12} className="shrink-0 text-[#1d9bf0]" /> : null}
-              </button>
-            )}
-            <span className="shrink-0 text-[10.5px] font-semibold text-faint">{snag.postedAt}</span>
-          </div>
-
-          <p className="mt-2 text-[13px] font-bold leading-[1.3] tracking-[-0.01em] text-ink">
-            <RichText text={snag.title} className="line-clamp-2" onHashtag={onHashtag} onMention={onMention} />
-          </p>
-
-          {/* Your own snags carry their own controls, right on the card. */}
+          {/* Your own controls sit on the artwork so every card keeps one height. */}
           {isMine && (onEdit || onDelete) ? (
-            <div className="mt-2 flex items-center justify-end gap-1.5 border-t border-line pt-2">
+            <div className="absolute bottom-2.5 left-2.5 z-30 flex items-center gap-1.5">
               {onEdit ? (
                 <button
                   type="button"
                   onClick={() => onEdit(snag)}
                   aria-label={`Edit ${snag.title}`}
-                  className="flex h-7 items-center gap-1 rounded-full border border-line px-2.5 text-[11px] font-semibold text-[#4d535c] transition-colors hover:border-brand hover:text-brand"
+                  className="flex h-7 items-center gap-1 rounded-full border border-white/35 bg-[#080a0e]/55 px-2.5 text-[11px] font-semibold text-white backdrop-blur-md transition-colors hover:bg-[#080a0e]/75"
                 >
                   <Icon name="edit" size={13} />
                   Edit
@@ -328,10 +312,10 @@ export function SnagCard({
                     onDelete(snag);
                   }}
                   aria-label={`Delete ${snag.title}`}
-                  className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-[11px] font-semibold transition-colors ${
+                  className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-[11px] font-semibold backdrop-blur-md transition-colors ${
                     confirmDelete
-                      ? "border-[#b3261e] bg-[#fdf2f1] text-[#b3261e]"
-                      : "border-line text-[#4d535c] hover:border-[#b3261e] hover:text-[#b3261e]"
+                      ? "border-[#ffb4ae] bg-[#b3261e]/85 text-white"
+                      : "border-white/35 bg-[#080a0e]/55 text-white hover:bg-[#080a0e]/75"
                   }`}
                 >
                   <Icon name="trash" size={13} />
@@ -341,12 +325,53 @@ export function SnagCard({
             </div>
           ) : null}
         </div>
+
+        {/*
+         * Fixed-height meta block: one 22px author row and two clamped title
+         * lines. Together with the 4:5 media this makes every card identical.
+         */}
+        <div data-meta="true" className="flex h-[86px] flex-col px-3 pb-3 pt-2.5">
+          <div className="flex h-[22px] items-center justify-between gap-2">
+            {snag.sponsoredBy ? (
+              <span className="flex min-w-0 items-center gap-1.5 text-[10.5px] font-semibold text-muted">
+                <span className="truncate">Sponsored by {snag.sponsoredBy}</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onOpenProfile(snag.creatorId ?? snag.creator)}
+                aria-label={`Open ${snag.creator}'s profile`}
+                className="flex min-w-0 items-center gap-1.5 rounded-full text-[11px] font-semibold text-ink transition-colors hover:text-brand"
+              >
+                <Avatar name={snag.creator} size={22} tone="soft" src={creatorAvatar} frame={creatorFrame} />
+                <span className="truncate">@{snag.creator}</span>
+                {creatorVerified ? <Icon name="verified" size={12} className="shrink-0 text-[#1d9bf0]" /> : null}
+              </button>
+            )}
+            <span className="shrink-0 text-[10.5px] font-semibold text-faint">{snag.postedAt}</span>
+          </div>
+
+          <p className="mt-1.5 min-h-[34px] text-[13px] font-bold leading-[1.3] tracking-[-0.01em] text-ink">
+            <RichText text={snag.title} className="line-clamp-2" onHashtag={onHashtag} onMention={onMention} />
+          </p>
+        </div>
       </div>
+
+      {/*
+       * Card frames wrap the whole card — artwork, author row and title — not
+       * just the media. The overlay never catches a click, so every control
+       * underneath still works.
+       */}
+      {frame ? (
+        <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-20">
+          <FrameLayer use={frame} target="snag" />
+        </span>
+      ) : null}
 
       {/* What a swipe is about to do, shown while the card is dragged. */}
       <span
         aria-hidden="true"
-        className={`pointer-events-none absolute left-3 top-1/4 z-40 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl bg-brand px-3 py-2 text-white shadow-[0_10px_24px_rgba(23,25,29,0.3)] transition-opacity duration-150 ${
+        className={`pointer-events-none absolute left-3 top-1/4 z-[60] flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl bg-brand px-3 py-2 text-white shadow-[0_10px_24px_rgba(23,25,29,0.3)] transition-opacity duration-150 ${
           hint === "like" ? "opacity-100" : "opacity-0"
         }`}
       >
@@ -355,7 +380,7 @@ export function SnagCard({
       </span>
       <span
         aria-hidden="true"
-        className={`pointer-events-none absolute right-3 top-1/4 z-40 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl bg-ink px-3 py-2 text-white shadow-[0_10px_24px_rgba(23,25,29,0.3)] transition-opacity duration-150 ${
+        className={`pointer-events-none absolute right-3 top-1/4 z-[60] flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl bg-ink px-3 py-2 text-white shadow-[0_10px_24px_rgba(23,25,29,0.3)] transition-opacity duration-150 ${
           hint === "save" ? "opacity-100" : "opacity-0"
         }`}
       >

@@ -24,7 +24,7 @@ const FILTER_BLURB: Record<FeedFilter, string> = {
   Clips: "Gameplay moments worth a rewatch",
   Loadouts: "Builds, guns and gear",
   Skins: "Character, weapon and vehicle skins",
-  Screenshots: "Scenery and photo mode",
+  Builds: "Bases and photo mode",
   "Squad Galleries": "Posts that live inside a squad",
 };
 
@@ -32,7 +32,7 @@ const HIGHLIGHTS = [
   {
     icon: "share" as const,
     title: "Snag anything",
-    body: "Clips, loadouts and screenshots. Hold a card to send it straight to a squad.",
+    body: "Clips, loadouts and base builds. Hold a card to send it straight to a squad.",
   },
   {
     icon: "users" as const,
@@ -80,7 +80,7 @@ const HOW_TO: { section: string; items: HowToItem[] }[] = [
       {
         icon: "plus",
         title: "Post with the +",
-        body: "The purple + takes a clip, loadout, screenshot or skin. MP4 clips up to 50 MB, plus up to four #tags and @mentions on one post.",
+        body: "The purple + takes a clip, loadout, base build or skin. MP4 clips up to 50 MB, plus up to four #tags and @mentions on one post.",
       },
       {
         icon: "users",
@@ -203,7 +203,7 @@ export function WelcomeFlow({ defaultName, defaultHandle, defaultAvatar, onFinis
               Snag it. Share it. <span className="text-brand">Run it</span> with your squad.
             </h1>
             <p className="mt-3 max-w-[42ch] text-[13.5px] leading-relaxed text-muted">
-              One feed for the clips, loadouts and screenshots you actually play with — and a squad gallery for the
+              One feed for the clips, loadouts and base builds you actually play with — and a squad gallery for the
               people you queue with.
             </p>
 
@@ -211,7 +211,7 @@ export function WelcomeFlow({ defaultName, defaultHandle, defaultAvatar, onFinis
               {HIGHLIGHTS.map((item) => (
                 <li key={item.title} className="flex gap-3">
                   <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
-                    <Icon name={item.icon} size={18} strokeWidth={2} />
+                    <Icon name={item.icon} size={18} strokeWidth={2} inline />
                   </span>
                   <div>
                     <p className="text-[13px] font-bold tracking-[-0.01em]">{item.title}</p>
@@ -260,7 +260,7 @@ export function WelcomeFlow({ defaultName, defaultHandle, defaultAvatar, onFinis
                     {group.items.map((item) => (
                       <li key={item.title} className="flex gap-3">
                         <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
-                          <Icon name={item.icon} size={16} strokeWidth={2} />
+                          <Icon name={item.icon} size={16} strokeWidth={2} inline />
                         </span>
                         <div className="min-w-0">
                           <p className="text-[12.5px] font-bold tracking-[-0.01em]">{item.title}</p>

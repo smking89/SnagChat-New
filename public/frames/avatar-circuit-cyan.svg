@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" preserveAspectRatio="none" fill="none">
+  <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+    <stop stop-color="#67e8f9"/><stop offset="1" stop-color="#0891b2"/>
+  </linearGradient>
+  <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+    <feGaussianBlur stdDeviation="4" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter><circle cx="120" cy="120" r="104" stroke="url(#g)" stroke-width="5" filter="url(#glow)"/>
+   <circle cx="120" cy="120" r="96" stroke="#22d3ee" stroke-opacity="0.35" stroke-width="2"/>
+   <path d="M212.4 158.3L229.0 165.2" stroke="#67e8f9" stroke-width="5" stroke-linecap="round"/>
+     <circle cx="229.0" cy="165.2" r="3" fill="#a5f3fc"/><path d="M158.3 212.4L165.2 229.0" stroke="#67e8f9" stroke-width="5" stroke-linecap="round"/>
+     <circle cx="165.2" cy="229.0" r="3" fill="#a5f3fc"/><path d="M81.7 212.4L74.8 229.0" stroke="#67e8f9" stroke-width="5" stroke-linecap="round"/>
+     <circle cx="74.8" cy="229.0" r="3" fill="#a5f3fc"/><path d="M27.6 158.3L11.0 165.2" stroke="#67e8f9" stroke-width="5" stroke-linecap="round"/>
+     <circle cx="11.0" cy="165.2" r="3" fill="#a5f3fc"/><path d="M27.6 81.7L11.0 74.8" stroke="#67e8f9" stroke-width="5" stroke-linecap="round"/>
+     <circle cx="11.0" cy="74.8" r="3" fill="#a5f3fc"/><path d="M81.7 27.6L74.8 11.0" stroke="#67e8f9" stroke-width="5" stroke-linecap="round"/>
+     <circle cx="74.8" cy="11.0" r="3" fill="#a5f3fc"/><path d="M158.3 27.6L165.2 11.0" stroke="#67e8f9" stroke-width="5" stroke-linecap="round"/>
+     <circle cx="165.2" cy="11.0" r="3" fill="#a5f3fc"/><path d="M212.4 81.7L229.0 74.8" stroke="#67e8f9" stroke-width="5" stroke-linecap="round"/>
+     <circle cx="229.0" cy="74.8" r="3" fill="#a5f3fc"/></svg>

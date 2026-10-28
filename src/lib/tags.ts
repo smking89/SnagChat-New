@@ -67,7 +67,7 @@ export function insertTag(text: string, tag: string, maxLength = 70): string {
 }
 
 /** Hashtags offered alongside a game, so a poster rarely has to type one. */
-export const SUGGESTED_HASHTAGS = ["clip", "loadout", "skin", "screenshot", "squad", "gg"];
+export const SUGGESTED_HASHTAGS = ["clip", "loadout", "skin", "base", "squad", "gg"];
 
 /** True when the draft already carries this exact tag. */
 export function hasTag(text: string, tag: string): boolean {

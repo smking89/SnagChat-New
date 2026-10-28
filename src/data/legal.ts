@@ -25,7 +25,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       },
       {
         heading: "Your content",
-        body: "You keep ownership of the clips, screenshots and posts you upload. By posting, you allow SnagChat to show that content to the people your visibility settings allow — your followers, your squad, or the public feed.",
+        body: "You keep ownership of the clips, base builds and posts you upload. By posting, you allow SnagChat to show that content to the people your visibility settings allow — your followers, your squad, or the public feed.",
       },
       {
         heading: "Moderation",
@@ -105,7 +105,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       },
       {
         heading: "Post what is yours",
-        body: "Share your own clips and screenshots. If you post someone else's work, credit them and make sure they are happy with it.",
+        body: "Share your own clips and base builds. If you post someone else's work, credit them and make sure they are happy with it.",
       },
       {
         heading: "Keep squads honest",

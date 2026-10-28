@@ -6,12 +6,14 @@ type FilterRailProps = {
 };
 
 /**
- * The tab rail is pinned to the very top of the screen, so scrolling never takes
- * the categories away; the header above it scrolls off instead.
+ * The tab rail is pinned below the header, so scrolling never takes the
+ * categories away. On phones the header scrolls off and the rail takes the top
+ * edge; from lg up the header is sticky too, so the rail parks under it at the
+ * height TopBar publishes (`--topbar-h`), which grows while search is open.
  */
 export function FilterRail({ active, onChange }: FilterRailProps) {
   return (
-    <div className="sticky top-0 z-30 -mx-4 border-b border-line/80 bg-white/92 px-4 backdrop-blur-xl sm:mx-0 sm:px-0">
+    <div className="sticky top-0 z-30 -mx-4 border-b border-line/80 bg-white/92 px-4 backdrop-blur-xl sm:mx-0 sm:px-0 lg:top-[var(--topbar-h,65px)]">
       <div
         role="group"
         aria-label="Filter snags"

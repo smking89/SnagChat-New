@@ -81,9 +81,6 @@ export function NotificationsScreen({
                           }`}
                         >
                           {headline}
-                          {actor?.verified ? (
-                            <Icon name="verified" size={11} className="ml-1 inline-block align-[-1px] text-[#1d9bf0]" />
-                          ) : null}
                         </span>
                         {notification.read ? null : (
                           <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand" aria-label="Unread" />

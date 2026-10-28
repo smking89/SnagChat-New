@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AdvertiseScreen } from "./components/AdvertiseScreen";
 import { AuthScreen } from "./components/AuthScreen";
 import { BottomNav } from "./components/BottomNav";
 import { ComposeSheet } from "./components/ComposeSheet";
@@ -12,15 +13,31 @@ import { ProfileScreen } from "./components/ProfileScreen";
 import { QuickShareDial } from "./components/QuickShareDial";
 import { ReportSheet, type ReportMode } from "./components/ReportSheet";
 import { ShareSheet } from "./components/ShareSheet";
+import { ShopScreen } from "./components/ShopScreen";
 import { SnagCard } from "./components/SnagCard";
 import { SnagScreen, type CommentView } from "./components/SnagScreen";
 import { SquadScreen } from "./components/SquadScreen";
 import { SquadsScreen } from "./components/SquadsScreen";
+import { StoriesRail } from "./components/StoriesRail";
+import { StoryComposerSheet, type StoryDraft } from "./components/StoryComposerSheet";
+import { StoryViewer } from "./components/StoryViewer";
 import { Toast, type ToastMessage } from "./components/Toast";
 import { TopBar } from "./components/TopBar";
 import { TopGamesSheet } from "./components/TopGamesSheet";
 import { WelcomeFlow } from "./components/WelcomeFlow";
 import { SEED_COMMENTS, SEED_LIKES, SEED_SAVES, SEED_SHARES, type Comment } from "./data/engagement";
+import {
+  feeFor,
+  loadoutFor,
+  registerCustomFrames,
+  type CreatorApplication,
+  type Frame,
+  type FrameLoadout,
+  type FrameOrder,
+  type FrameTarget,
+  type FrameUse,
+  type StripeAccount,
+} from "./data/frames";
 import { COPYRIGHT_YEAR, LEGAL_DOCS, findLegalDoc } from "./data/legal";
 import { SEED_NOTIFICATIONS, type AppNotification } from "./data/notifications";
 import { findPlayer, findPlayerId, ME, PLAYERS, type Player } from "./data/players";
@@ -42,13 +59,23 @@ import {
   type SquadVisibility,
 } from "./data/squads";
 import {
+  addStoryItem,
+  freshStories,
+  groupStories,
+  hasSharedSnag,
+  SEED_STORIES,
+  type StoryGroupView,
+  type StoryItem,
+} from "./data/stories";
+import {
   liveMessages,
   SEED_THREADS,
   type Thread,
   type ThreadMessage,
   type ThreadMode,
 } from "./data/threads";
-import { deleteAccount, findAccount, handleForEmail, type Session } from "./lib/auth";
+import { rankFeed } from "./engine/snagchat.ts";
+import { deleteAccount, findAccount, handleForEmail, updateAccount, type Session } from "./lib/auth";
 import {
   DIAL_DEFAULTS,
   deliveryLine,
@@ -73,6 +100,8 @@ type ScreenState =
   | { kind: "thread"; playerId: string }
   | { kind: "snag"; snagId: string }
   | { kind: "squads" }
+  | { kind: "shop" }
+  | { kind: "advertise" }
   | { kind: "squad"; squadId: string };
 
 type ProfileFields = {
@@ -86,6 +115,7 @@ type ProfileFields = {
   bannerClip?: string;
   interests?: string[];
   private?: boolean;
+  verified?: boolean;
   followPermission?: FollowPermission;
   invitePermission?: InvitePermission;
 };
@@ -123,6 +153,21 @@ export default function App() {
   );
   const [report, setReport] = useState<{ snag: Snag; mode: ReportMode } | null>(null);
 
+  // The shop: what you own, what you wear, what creators sell, and the seller's
+  // Stripe account. All local to this browser — there is no server in the demo.
+  const [ownedFrames, setOwnedFrames] = usePersistentState<string[]>("snagchat:frame-owned", []);
+  const [frameLoadout, setFrameLoadout] = usePersistentState<FrameLoadout>("snagchat:frame-loadout", {});
+  const [frameCreator, setFrameCreator] = usePersistentState<CreatorApplication>("snagchat:creator", {
+    status: "none",
+  });
+  const [creatorProducts, setCreatorProducts] = usePersistentState<Frame[]>("snagchat:frame-products", []);
+  const [stripeAccount, setStripeAccount] = usePersistentState<StripeAccount | null>("snagchat:stripe", null);
+  const [frameOrders, setFrameOrders] = usePersistentState<FrameOrder[]>("snagchat:frame-orders", []);
+
+  // Every avatar, card and nameplate resolves frames through findFrame, so the
+  // published products are registered before anything renders.
+  registerCustomFrames(creatorProducts);
+
   const [filter, setFilter] = useState<FeedFilter>("For You");
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -135,6 +180,11 @@ export default function App() {
   const [customTags, setCustomTags] = usePersistentState<string[]>("snagchat:tags", []);
   /** Snags flicked into a squad gallery from the feed. */
   const [squadShares, setSquadShares] = usePersistentState<Snag[]>("snagchat:squad-shares", []);
+  /** Your 24-hour stories, plus which items you have watched. */
+  const [myStories, setMyStories] = usePersistentState<StoryItem[]>("snagchat:stories", []);
+  const [seenStories, setSeenStories] = usePersistentState<string[]>("snagchat:story-seen", []);
+  const [storyComposer, setStoryComposer] = useState(false);
+  const [storyView, setStoryView] = useState<{ authorId: string; itemIndex: number } | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [composing, setComposing] = useState(false);
   const [composeSquadId, setComposeSquadId] = useState<string | null>(null);
@@ -209,6 +259,31 @@ export default function App() {
     });
   }, [snags, filter, query, hiddenGalleries]);
 
+  /**
+   * Ranking reads interactions through a ref so liking or saving a card does
+   * not reshuffle the grid under the reader's thumb. The next filter, query or
+   * follow change picks the new signals up.
+   */
+  const interactionsRef = useRef({ likes, saves, comments: userComments, shares: sharedSnags });
+  interactionsRef.current = { likes, saves, comments: userComments, shares: sharedSnags };
+
+  const rankedSnags = useMemo(() => {
+    if (visibleSnags.length < 2) return visibleSnags;
+    const interactions = interactionsRef.current;
+    return rankFeed({
+      allSnags: snags,
+      visibleSnags,
+      query,
+      follows,
+      squads,
+      likes: interactions.likes,
+      saves: interactions.saves,
+      comments: interactions.comments,
+      shares: interactions.shares,
+      me: { name: me.name, handle: me.handle },
+    }).ordered;
+  }, [visibleSnags, snags, query, follows, squads, me.name, me.handle]);
+
   const mePlayer: Player = useMemo(
     () => ({ ...ME, ...me, following: ME.following + follows.length }),
     [me, follows.length],
@@ -220,6 +295,21 @@ export default function App() {
     if (found) return found;
     return { id, name: id, handle: id, bio: "Player on SnagChat.", game: "SnagChat", followers: 0, following: 0 };
   };
+
+  /** Your story first, then everyone else's live story runs. */
+  const storyGroups: StoryGroupView[] = (() => {
+    const grouped = groupStories(freshStories([...myStories, ...SEED_STORIES]));
+    return [
+      ...grouped.filter((group) => group.authorId === ME_ID),
+      ...grouped.filter((group) => group.authorId !== ME_ID),
+    ].map((group) => ({
+      ...group,
+      author: resolvePlayer(group.authorId),
+      avatarFrame: loadoutFor(group.authorId, frameLoadout).avatar,
+    }));
+  })();
+  const myStoryItems = storyGroups.find((group) => group.authorId === ME_ID)?.items ?? [];
+  const otherStoryGroups = storyGroups.filter((group) => group.authorId !== ME_ID);
 
   const threadList = useMemo(() => Object.values(threads), [threads]);
   const unreadTotal = threadList.reduce((total, thread) => total + thread.unread, 0);
@@ -250,7 +340,9 @@ export default function App() {
     const next = stack.slice(0, -1);
     setStack(next);
     if (next.length === 0) {
-      setActiveTab((tab) => (tab === "messages" || tab === "profile" || tab === "squads" ? "home" : tab));
+      setActiveTab((tab) =>
+        tab === "messages" || tab === "profile" || tab === "squads" || tab === "shop" ? "home" : tab,
+      );
     }
   };
 
@@ -485,6 +577,109 @@ export default function App() {
    * final. The toast holds longer than usual because it has a button to reach
    * for.
    */
+  const framesFor = (playerId: string): FrameLoadout => loadoutFor(playerId, frameLoadout);
+
+  const markStoriesSeen = (itemIds: string[]) => {
+    setSeenStories((current) => {
+      const next = new Set(current);
+      itemIds.forEach((id) => next.add(id));
+      return next.size === current.length ? current : Array.from(next);
+    });
+  };
+
+  const openStories = (authorId: string) => {
+    const group = storyGroups.find((entry) => entry.authorId === authorId);
+    if (!group || group.items.length === 0) {
+      if (authorId === ME_ID) setStoryComposer(true);
+      return;
+    }
+    const firstUnseen = group.items.findIndex((item) => !seenStories.includes(item.id));
+    setStoryView({ authorId, itemIndex: firstUnseen >= 0 ? firstUnseen : 0 });
+  };
+
+  const addStory = (draft: StoryDraft) => {
+    const item: StoryItem = {
+      id: `story-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      authorId: ME_ID,
+      image: draft.image,
+      caption: draft.caption,
+      game: draft.game,
+      at: Date.now(),
+      snagId: draft.snagId,
+      via: draft.via,
+    };
+    setMyStories((current) => addStoryItem(current, item));
+    setStoryComposer(false);
+    showToast("Added to your story", "It stays up for 24 hours.");
+  };
+
+  const addSnagToStory = (snag: Snag) => {
+    const creator = resolvePlayer(snag.creatorId ?? findPlayerId(snag.creator));
+    addStory({
+      image: snag.image,
+      caption: snag.title,
+      game: snag.game,
+      snagId: snag.id,
+      via: creator.id === ME_ID ? undefined : creator.handle,
+    });
+  };
+
+  const buyFrame = (frame: Frame) => {
+    const feeCents = feeFor(frame.priceCents);
+    setOwnedFrames((current) => (current.includes(frame.id) ? current : [...current, frame.id]));
+    setFrameOrders((current) => [
+      {
+        id: `order-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        frameId: frame.id,
+        priceCents: frame.priceCents,
+        feeCents,
+        sellerNetCents: frame.priceCents - feeCents,
+        seller: frame.creator,
+        at: Date.now(),
+      },
+      ...current,
+    ]);
+    showToast(`${frame.name} added`, "Demo checkout — no card was charged.");
+  };
+
+  const applyFrame = (target: FrameTarget, use: FrameUse | null) => {
+    setFrameLoadout((current) => {
+      const next = { ...current };
+      if (use) next[target] = use;
+      else delete next[target];
+      return next;
+    });
+  };
+
+  /** Demo build: there is no review desk, so verification is granted at once. */
+  const requestVerification = () => {
+    setMe((current) => ({ ...current, verified: true }));
+    showToast("Account verified", "Demo build: verification is approved instantly.");
+  };
+
+  const submitCreatorApplication = (application: CreatorApplication) => {
+    setFrameCreator({ ...application, status: "approved" });
+    showToast(
+      "Creator application approved",
+      application.storeName ? `${application.storeName} is open for business.` : undefined,
+    );
+  };
+
+  const publishProduct = (product: Frame) => {
+    setCreatorProducts((current) => [product, ...current]);
+    showToast(`${product.name} is live`, "Listed in the shop with your creator name.");
+  };
+
+  const connectStripe = (account: StripeAccount) => {
+    setStripeAccount(account);
+    showToast("Stripe connected", "Payouts are enabled for your store (demo account).");
+  };
+
+  const disconnectStripe = () => {
+    setStripeAccount(null);
+    showToast("Stripe disconnected", "Your frames stay listed; payouts are paused.");
+  };
+
   const showUndoToast = (text: string, detail: string, undo: () => void) =>
     setToast({
       id: Date.now(),
@@ -751,12 +946,48 @@ export default function App() {
   };
 
   const deleteSquad = (squad: Squad) => {
+    const index = squads.findIndex((item) => item.id === squad.id);
     const galleryIds = snags.filter((snag) => snag.squadId === squad.id).map((snag) => snag.id);
+    // Only the posts this delete hides can come back; anything already gone stays gone.
+    const hiddenByDelete = galleryIds.filter((id) => !removedSnags.includes(id));
+    // Your own gallery posts keep their place on the profile grid for the undo.
+    const myGallerySnags = mySnags
+      .map((snag, position) => ({ snag, position }))
+      .filter(({ snag }) => snag.squadId === squad.id);
+    const squadInvites = invites.filter((invite) => invite.squadId === squad.id);
+
     setRemovedSnags((current) => Array.from(new Set([...current, ...galleryIds])));
     setMySnags((current) => current.filter((snag) => snag.squadId !== squad.id));
     setSquads((current) => current.filter((item) => item.id !== squad.id));
     setInvites((current) => current.filter((invite) => invite.squadId !== squad.id));
     popScreen();
+
+    // A squad is a lot to lose to a stray confirm, so it can be taken back.
+    showUndoToast("Squad deleted", squad.name, () => {
+      setSquads((current) => {
+        if (current.some((item) => item.id === squad.id)) return current;
+        const next = [...current];
+        next.splice(index < 0 ? next.length : Math.min(index, next.length), 0, squad);
+        return next;
+      });
+      setRemovedSnags((current) => current.filter((id) => !hiddenByDelete.includes(id)));
+      setMySnags((current) => {
+        if (myGallerySnags.length === 0) return current;
+        const next = current.filter((snag) => !myGallerySnags.some(({ snag: gone }) => gone.id === snag.id));
+        for (const { snag, position } of myGallerySnags) {
+          next.splice(Math.min(position, next.length), 0, snag);
+        }
+        return next;
+      });
+      if (squadInvites.length > 0) {
+        setInvites((current) => [
+          ...current,
+          ...squadInvites.filter(
+            (invite) => !current.some((item) => item.id === invite.id),
+          ),
+        ]);
+      }
+    });
   };
 
   const downloadData = () => {
@@ -810,6 +1041,10 @@ export default function App() {
   };
 
   const saveProfile = (values: ProfileFields) => {
+    // Keep the whole previous profile so an edit can be taken back in one tap.
+    const before = { ...me };
+    const beforeAccount = session ? findAccount(session.email) : undefined;
+
     setMe((current) => ({ ...current, ...values }));
 
     // Keep your own posts in sync when the username changes.
@@ -820,6 +1055,22 @@ export default function App() {
         ),
       );
     }
+
+    showUndoToast("Profile updated", values.handle !== before.handle ? `@${values.handle}` : "Your changes are live", () => {
+      setMe(before);
+      setMySnags((current) =>
+        current.map((snag) =>
+          snag.creatorId === ME_ID ? { ...snag, creator: before.handle } : snag,
+        ),
+      );
+      // The handle and region live on the account record as well as the profile.
+      if (session && beforeAccount) {
+        updateAccount(session.email, {
+          handle: beforeAccount.handle,
+          region: beforeAccount.region,
+        });
+      }
+    });
   };
 
   const saveSnagEdit = (values: { title: string; game: string }) => {
@@ -860,6 +1111,13 @@ export default function App() {
       setQuery("");
       setSearchOpen(false);
       setStack([{ kind: "squads" }]);
+      return;
+    }
+
+    if (tab === "shop") {
+      setQuery("");
+      setSearchOpen(false);
+      setStack([{ kind: "shop" }]);
       return;
     }
 
@@ -968,24 +1226,36 @@ export default function App() {
         unreadCount={unreadTotal}
         notificationCount={unreadNotifications}
         onOpenNotifications={() => pushScreen({ kind: "notifications" })}
+        demoSession={session.demo}
+        onSignIn={signOut}
       />
 
       <main ref={feedSwipe}>
-        <section className="mx-auto max-w-[1080px] px-4 pt-8 sm:px-6 sm:pt-12">
+        <section className="mx-auto max-w-[1320px] px-4 pt-8 sm:px-6 sm:pt-12">
           <div className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden="true" />
             <p className="text-[9.5px] font-extrabold uppercase tracking-[0.22em] text-brand">Snag feed</p>
           </div>
-          <h1 className="mt-4 max-w-[15ch] font-display text-[36px] font-extrabold leading-[0.94] tracking-[-0.05em] sm:text-[60px]">
+          <h1 className="mt-4 max-w-[15ch] font-display text-[36px] font-extrabold leading-[0.94] tracking-[-0.05em] sm:text-[60px] lg:text-[66px]">
             Your next <span className="text-brand">favorite</span> play.
           </h1>
-          <p className="mt-4 max-w-[46ch] text-[13px] leading-relaxed text-muted sm:text-[15px]">
-            Clips, loadouts and screenshots from the players you actually run with. Snag one and send it straight
+          <p className="mt-4 max-w-[58ch] text-[13px] leading-relaxed text-muted sm:text-[15px] lg:text-[16px]">
+            Clips, loadouts and base builds from the players you actually run with. Snag one and send it straight
             to your squad.
           </p>
         </section>
 
-        <div className="mx-auto max-w-[1080px] px-4 sm:px-6">
+        <div className="mx-auto max-w-[1320px] px-4 sm:px-6">
+          <StoriesRail
+            myAuthor={mePlayer}
+            myItems={myStoryItems}
+            myAvatarFrame={framesFor(ME_ID).avatar}
+            groups={otherStoryGroups}
+            seen={seenStories}
+            onOpen={openStories}
+            onAdd={() => setStoryComposer(true)}
+          />
+
           <FilterRail active={filter} onChange={selectFilter} />
 
           <section id="feed" ref={feedRef} aria-label="Snag feed" className="scroll-mt-[62px] pt-5">
@@ -1013,13 +1283,18 @@ export default function App() {
 
             {visibleSnags.length > 0 ? (
               <div key={filter} className={`feed-swipe feed-swipe-${feedMotion}`}>
-                <div className="columns-2 [column-gap:12px] md:columns-3">
-                  {visibleSnags.map((snag) => (
+                <div className="feed-brick">
+                  {rankedSnags.map((snag) => {
+                    const creator = resolvePlayer(snag.creatorId ?? findPlayerId(snag.creator));
+                    const creatorLoadout = framesFor(creator.id);
+                    return (
+                  <div key={snag.id} className="feed-brick-cell">
                   <SnagCard
-                    key={snag.id}
                     snag={snag}
-                    creatorAvatar={resolvePlayer(snag.creatorId ?? findPlayerId(snag.creator)).avatar}
-                    creatorVerified={resolvePlayer(snag.creatorId ?? findPlayerId(snag.creator)).verified}
+                    creatorAvatar={creator.avatar}
+                    creatorVerified={creator.verified}
+                    creatorFrame={creatorLoadout.avatar}
+                    frame={creatorLoadout.snag}
                     liked={likes.includes(snag.id)}
                     likeCount={likeCountFor(snag.id)}
                     saved={saves.includes(snag.id)}
@@ -1035,7 +1310,9 @@ export default function App() {
                     onEdit={mySnagIds.has(snag.id) ? (item) => setEditingSnag(item) : undefined}
                     onDelete={(item) => deletePost(item)}
                   />
-                  ))}
+                  </div>
+                    );
+                  })}
                 </div>
               </div>
             ) : (
@@ -1061,42 +1338,73 @@ export default function App() {
             ) : null}
           </section>
 
-          <footer className="mt-8 border-t border-line py-9 text-center">
-            <div className="flex flex-col items-center gap-3">
-              <img
-                src="/brand/snagchat-icon.png"
-                alt="SnagChat"
-                width={512}
-                height={512}
-                className="h-14 w-auto xl:hidden"
-              />
-              <img
-                src="/brand/snagchat-wordmark.png"
-                alt="SnagChat"
-                width={445}
-                height={201}
-                className="hidden h-10 w-auto xl:block"
-              />
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-faint">Play it. Share it.</p>
-              <p className="mx-auto max-w-[42ch] text-[11.5px] leading-relaxed text-muted">
-                Snags, loadouts and squad galleries in one feed. Built for the people you queue with.
-              </p>
-            </div>
-
-            <div className="mt-6 flex flex-col items-center gap-3 border-t border-line pt-6">
-              <nav aria-label="Legal" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-                {LEGAL_DOCS.map((doc) => (
+          <footer className="mt-8 border-t border-line px-2 py-9">
+            <div className="mx-auto grid max-w-[720px] grid-cols-2 gap-x-6 gap-y-7 text-left sm:grid-cols-[1.2fr_1fr_1fr]">
+              <div className="col-span-2 flex flex-col gap-3 sm:col-span-1">
+                <img
+                  src="/brand/snagchat-wordmark.png"
+                  alt="SnagChat"
+                  width={445}
+                  height={201}
+                  className="h-9 w-auto self-start"
+                />
+                <p className="text-[12px] font-semibold text-muted">Capture the moment.</p>
+              </div>
+              <div className="flex flex-col gap-2.5">
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-faint">Build &amp; grow</p>
+                <a
+                  href="https://developer.snagchat.io"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-left text-[12px] font-semibold text-ink hover:text-brand"
+                >
+                  Developer Portal
+                </a>
+                <button
+                  type="button"
+                  onClick={() => pushScreen({ kind: "shop" })}
+                  className="text-left text-[12px] font-semibold text-ink hover:text-brand"
+                >
+                  Shop
+                </button>
+              </div>
+              <div className="flex flex-col gap-2.5">
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-faint">Resources</p>
+                {LEGAL_DOCS.filter((doc) => doc.id === "guidelines").map((doc) => (
                   <button
                     key={doc.id}
                     type="button"
                     onClick={() => setLegalDocId(doc.id)}
-                    className="text-[12px] font-semibold text-[#4d535c] underline decoration-line underline-offset-4 transition-colors hover:text-ink hover:decoration-ink"
+                    className="text-left text-[12px] font-semibold text-ink hover:text-brand"
+                  >
+                    Guidelines
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => pushScreen({ kind: "advertise" })}
+                  className="text-left text-[12px] font-semibold text-ink hover:text-brand"
+                >
+                  Advertise with us
+                </button>
+              </div>
+              <div className="flex flex-col gap-2.5">
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-faint">Legal</p>
+                {LEGAL_DOCS.filter((doc) => doc.id !== "guidelines").map((doc) => (
+                  <button
+                    key={doc.id}
+                    type="button"
+                    onClick={() => setLegalDocId(doc.id)}
+                    className="text-left text-[12px] font-semibold text-ink hover:text-brand"
                   >
                     {doc.short}
                   </button>
                 ))}
-              </nav>
-              <p className="text-[11px] text-faint">© {COPYRIGHT_YEAR} SnagChat. All rights reserved.</p>
+              </div>
+            </div>
+
+            <div className="mx-auto mt-8 max-w-[720px] border-t border-line pt-5 text-center">
+              <p className="text-[11px] text-faint">© {COPYRIGHT_YEAR} SnagChat.io All rights reserved.</p>
             </div>
           </footer>
         </div>
@@ -1180,6 +1488,37 @@ export default function App() {
         />
       ) : null}
 
+      {storyComposer ? (
+        <StoryComposerSheet
+          mySnags={mySnags}
+          game={mePlayer.game}
+          onAdd={addStory}
+          onCreate={() => {
+            setStoryComposer(false);
+            startCompose(null);
+          }}
+          onClose={() => setStoryComposer(false)}
+        />
+      ) : null}
+
+      {storyView ? (
+        <StoryViewer
+          key={`${storyView.authorId}-${storyView.itemIndex}`}
+          groups={storyGroups}
+          startAuthorId={storyView.authorId}
+          meId={ME_ID}
+          startItem={storyView.itemIndex}
+          onSeen={markStoriesSeen}
+          onOpenSnag={(snagId) => {
+            const target = snags.find((snag) => snag.id === snagId);
+            if (!target) return;
+            setStoryView(null);
+            openSnag(target);
+          }}
+          onClose={() => setStoryView(null)}
+        />
+      ) : null}
+
       {toast ? <Toast toast={toast} onDismiss={() => setToast(null)} /> : null}
 
       {report ? (
@@ -1222,6 +1561,8 @@ export default function App() {
               suggestions={suggestions}
               onClose={popScreen}
               onOpenThread={openThread}
+              frameFor={(playerId) => framesFor(playerId).avatar}
+              nameplateFor={(playerId) => framesFor(playerId).nameplate}
             />
           );
         }
@@ -1243,6 +1584,8 @@ export default function App() {
               shareCount={shareCountFor(snag.id)}
               comments={commentsFor(snag.id)}
               currentAvatar={mePlayer.avatar}
+              frame={framesFor(author.id).snag}
+              authorFrame={framesFor(author.id).avatar}
               onToggleLike={() => toggleLike(snag.id)}
               onToggleSave={() => toggleSave(snag.id)}
               onShare={() => setShare({ snag, quick: false })}
@@ -1250,6 +1593,8 @@ export default function App() {
               reported={Boolean(reports[snag.id])}
               onOpenProfile={() => pushScreen({ kind: "profile", playerId: author.id })}
               onAddComment={(text) => addComment(snag.id, text)}
+              onAddToStory={snag.sponsoredBy ? undefined : () => addSnagToStory(snag)}
+              inStory={hasSharedSnag(myStories, snag.id)}
               onHashtag={searchTag}
               onMention={openProfile}
               isMine={author.id === ME_ID}
@@ -1275,6 +1620,9 @@ export default function App() {
               messages={thread ? liveMessages(thread) : []}
               mode={thread?.mode ?? "keep"}
               myAvatar={mePlayer.avatar}
+              playerFrame={framesFor(screen.playerId).avatar}
+              playerNameplate={framesFor(screen.playerId).nameplate}
+              myFrame={framesFor(ME_ID).avatar}
               onClose={popScreen}
               onOpenProfile={() => pushScreen({ kind: "profile", playerId: screen.playerId })}
               onSend={(text) => sendMessage(screen.playerId, text)}
@@ -1351,6 +1699,34 @@ export default function App() {
           );
         }
 
+        if (screen.kind === "shop") {
+          return (
+            <ShopScreen
+              key={key}
+              onClose={popScreen}
+              owned={ownedFrames}
+              loadout={frameLoadout}
+              products={creatorProducts}
+              verified={Boolean(me.verified)}
+              creator={frameCreator}
+              stripe={stripeAccount}
+              orders={frameOrders}
+              onBuy={buyFrame}
+              onApply={applyFrame}
+              onRequestVerification={requestVerification}
+              onSubmitCreator={submitCreatorApplication}
+              onPublishProduct={publishProduct}
+              onConnectStripe={connectStripe}
+              onDisconnectStripe={disconnectStripe}
+              onToast={showToast}
+            />
+          );
+        }
+
+        if (screen.kind === "advertise") {
+          return <AdvertiseScreen key={key} onClose={popScreen} onToast={showToast} />;
+        }
+
         const player = resolvePlayer(screen.playerId);
         const isMe = screen.playerId === ME_ID;
         const isFollowing = follows.includes(screen.playerId);
@@ -1390,6 +1766,8 @@ export default function App() {
             onManageDial={() => setManageDial(true)}
             onDownloadData={downloadData}
             onDeleteAccount={deleteMyAccount}
+            frames={framesFor(player.id)}
+            onOpenShop={() => pushScreen({ kind: "shop" })}
           />
         );
       })}
