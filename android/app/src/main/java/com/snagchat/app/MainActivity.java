@@ -13,7 +13,7 @@ import androidx.webkit.WebViewClientCompat;
 
 /**
  * SnagChat on Android: the built web app, served out of the APK's assets from
- * https://appassets.androidhost/ so localStorage and IndexedDB (uploaded clips)
+ * https://appassets.androidplatform.net/ so localStorage and IndexedDB (uploaded clips)
  * behave the way they do on the web instead of being blocked on file://.
  */
 public class MainActivity extends AppCompatActivity {
@@ -49,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
     });
 
     if (savedInstanceState == null) {
-      webView.loadUrl("https://appassets.androidhost/index.html");
+      webView.loadUrl("https://appassets.androidplatform.net/index.html");
     } else {
       webView.restoreState(savedInstanceState);
     }

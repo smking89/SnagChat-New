@@ -170,7 +170,7 @@ Shared links carry the deep link in the query string (`src/lib/share.ts` reads i
 
 ## Android APK
 
-The app also ships as an Android APK. `android/` is a thin WebView wrapper around the same build: it serves the built files out of the APK's assets from `https://appassets.androidhost/` (`MainActivity.java` with `WebViewAssetLoader`) instead of `file://`, so `localStorage` and the IndexedDB clip store behave exactly as they do on the web, and muted clips are allowed to autoplay.
+The app also ships as an Android APK. `android/` is a thin WebView wrapper around the same build: it serves the built files out of the APK's assets from `https://appassets.androidplatform.net/` (`MainActivity.java` with `WebViewAssetLoader`) instead of `file://`, so `localStorage` and the IndexedDB clip store behave exactly as they do on the web, and muted clips are allowed to autoplay.
 
 ```bash
 bash android/build-apk.sh   # web build -> APK assets -> snagchat.apk
