@@ -52,6 +52,10 @@ generated.
 - The app declares `color-scheme: only light`, so Chrome and Android WebView forced dark mode no longer invert the white auth buttons and darken the welcome screen.
 - The green online dot paints on top of ringed, coloured and video avatars, and the add-photo badge no longer covers it — that badge owns the corner only while your own profile has no photo, so the dot is hidden in that one state.
 
+## [2026-10-29] — cad7d40
+
+- ci(developer): typecheck and build the portal on every push
+
 ## [2026-10-29] — 619a0c9
 
 - feat(developer): add the developer portal site
@@ -100,6 +104,7 @@ generated.
 ### Added
 
 - Initial cloud project and the first build of the SnagChat preview.
+
 
 
 
