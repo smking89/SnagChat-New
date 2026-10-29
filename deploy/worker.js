@@ -1157,12 +1157,32 @@ const ROUTES = [
 
 const MUTATING = new Set(["POST", "PATCH", "PUT", "DELETE"]);
 
-/** Origin must match, or the client must identify itself as same-origin script. */
-function csrfRejected(request, url) {
+/** Loopback host, as seen on the request URL or in an Origin header. */
+function isLoopback(host) {
+  return host === "localhost" || host === "[::1]" || host.startsWith("127.");
+}
+
+/**
+ * Origin must match, or the client must identify itself as same-origin script.
+ * Local dev serves the page through the Vite proxy on one loopback port while
+ * the API answers on another, so a loopback API accepts any loopback origin.
+ * Deployed (non-loopback) APIs keep the exact-origin requirement.
+ */
+export function csrfRejected(request, url) {
   if (!MUTATING.has(request.method)) return false;
   const origin = request.headers.get("origin");
-  if (origin && origin !== url.origin) return true;
-  if (!origin && request.headers.get("x-requested-with") !== "XMLHttpRequest") return true;
+  if (origin) {
+    if (origin === url.origin) return false;
+    if (isLoopback(url.hostname)) {
+      try {
+        if (isLoopback(new URL(origin).hostname)) return false;
+      } catch {
+        // Origin: null or an unparseable value stays rejected.
+      }
+    }
+    return true;
+  }
+  if (request.headers.get("x-requested-with") !== "XMLHttpRequest") return true;
   return false;
 }
 
