@@ -295,7 +295,7 @@ export function ProfileScreen({
                   className="flex h-9 items-center gap-1.5 rounded-full border border-line px-3 text-[11.5px] font-semibold text-[#4d535c] transition-colors hover:border-[#d8dce1]"
                 >
                   <Icon name="shop" size={14} />
-                  Shop
+                  Frames
                 </button>
               ) : null}
               {isMe ? (
@@ -447,16 +447,12 @@ export function ProfileScreen({
               <Nameplate
                 text={player.name}
                 use={frames?.nameplate}
+                verified={player.verified}
                 className="min-w-0"
                 textClassName="truncate"
               />
             </h1>
-            <p className="mt-1.5 flex min-w-0 items-center gap-1 text-[12px] font-medium text-muted">
-              <span className="truncate">@{player.handle}</span>
-              {player.verified ? (
-                <Icon name="verified" size={14} className="shrink-0 text-[#1d9bf0]" />
-              ) : null}
-            </p>
+            <p className="mt-1.5 text-[12px] font-medium text-muted">@{player.handle}</p>
 
             {player.private && !editing ? (
               <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-ink px-2.5 py-1 text-[9.5px] font-bold uppercase tracking-[0.12em] text-white">
@@ -843,7 +839,6 @@ export function ProfileScreen({
             setSettingsOpen(false);
           }}
           onDelete={() => onDeleteAccount?.()}
-          onSignOut={() => onSignOut?.()}
           onManageDial={() => {
             setSettingsOpen(false);
             onManageDial?.();

@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { SEED_SNAGS } from "../data/snags.ts";
-import { SEED_SQUADS } from "../data/squads.ts";
+import { SEED_SNAGS, SEED_SQUADS } from "./seed-corpus.ts";
 import { kindOf, minutesAgo, rankFeed, type RankFeedInput } from "./snagchat.ts";
 
 const hiddenSquads = new Set(

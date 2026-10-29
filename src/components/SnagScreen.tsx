@@ -49,10 +49,6 @@ type SnagScreenProps = {
   /** The creator's snag frame and avatar frame, when they own them. */
   frame?: FrameUse;
   authorFrame?: FrameUse;
-  /** Adds this post to your 24-hour story. */
-  onAddToStory?: () => void;
-  /** True once this snag is already one of your story items. */
-  inStory?: boolean;
   onClose: () => void;
 };
 
@@ -80,8 +76,6 @@ export function SnagScreen({
   onMention,
   frame,
   authorFrame,
-  onAddToStory,
-  inStory = false,
   onClose,
 }: SnagScreenProps) {
   const [draft, setDraft] = useState("");
@@ -264,15 +258,14 @@ export function SnagScreen({
                   frame={authorFrame}
                 />
                 <span className="min-w-0">
-                  <span className="block truncate text-[13.5px] font-bold tracking-[-0.01em]">
-                    {author.name}
-                  </span>
-                  <span className="flex min-w-0 items-center gap-1 text-[11px] text-muted">
-                    <span className="truncate">@{author.handle}</span>
+                  <span className="flex items-center gap-1 text-[13.5px] font-bold tracking-[-0.01em]">
+                    <span className="truncate">{author.name}</span>
                     {author.verified ? (
-                      <Icon name="verified" size={12} className="shrink-0 text-[#1d9bf0]" />
+                      <Icon name="verified" size={13} className="shrink-0 text-[#1d9bf0]" />
                     ) : null}
-                    <span className="shrink-0">· {snag.postedAt}</span>
+                  </span>
+                  <span className="block truncate text-[11px] text-muted">
+                    @{author.handle} · {snag.postedAt}
                   </span>
                 </span>
               </button>
@@ -352,23 +345,6 @@ export function SnagScreen({
               </button>
             </div>
 
-            {onAddToStory ? (
-              <button
-                type="button"
-                onClick={onAddToStory}
-                disabled={inStory}
-                aria-pressed={inStory}
-                className={`mt-3 inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[11.5px] font-semibold transition-colors ${
-                  inStory
-                    ? "cursor-default border-brand/30 bg-brand-soft text-brand"
-                    : "border-line bg-white text-[#4d535c] hover:border-[#d8dce1] hover:text-ink"
-                }`}
-              >
-                <Icon name={inStory ? "check" : "story"} size={14} strokeWidth={2.2} />
-                {inStory ? "In your story" : "Add to your story"}
-              </button>
-            ) : null}
-
             <div ref={commentsRef} className="mt-6 scroll-mt-4">
               <div className="flex items-baseline justify-between">
                 <h2 className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#4d535c]">
@@ -390,14 +366,15 @@ export function SnagScreen({
                       <Avatar name={comment.author.name} size={30} tone="soft" src={comment.author.avatar} />
                       <div className="min-w-0 flex-1">
                         <p className="text-[11.5px] leading-tight">
-                          <span className="font-bold">{comment.author.name}</span>
-                          <span className="inline-flex items-center gap-1 text-faint">
-                            {" "}@
-                            {comment.author.handle}
+                          <span className="inline-flex items-center gap-1 font-bold">
+                            {comment.author.name}
                             {comment.author.verified ? (
                               <Icon name="verified" size={11} className="shrink-0 text-[#1d9bf0]" />
                             ) : null}
-                            <span>· {formatRelative(comment.at)}</span>
+                          </span>
+                          <span className="text-faint">
+                            {" "}
+                            @{comment.author.handle} · {formatRelative(comment.at)}
                           </span>
                         </p>
                         <p className="mt-1 text-[12.5px] leading-relaxed text-[#3d424a]">

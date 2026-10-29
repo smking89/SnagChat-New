@@ -69,7 +69,8 @@ describe("loadouts", () => {
     const mine = { avatar: { frameId: "ember-ring", effect: "pulse" as const } };
     assert.equal(loadoutFor("you", mine), mine);
     assert.deepEqual(loadoutFor("nobody", mine), {});
-    assert.equal(loadoutFor("nyx", mine).avatar?.frameId, "ember-ring");
+    // Nobody ships wearing a frame: every other player starts bare.
+    assert.deepEqual(loadoutFor("nyx", mine), {});
   });
 
   it("resolves creator products once they are registered", () => {

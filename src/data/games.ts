@@ -14,6 +14,12 @@ export type Game = {
 /** The game catalogue. Files live in public/games/<slug>.png. */
 export const GAMES: Game[] = [
   { name: "Rust", logo: "/games/rust.png", aliases: ["rust pc", "rust console"] },
+  {
+    name: "Counter-Strike 2",
+    logo: "/games/cs2.png",
+    aliases: ["cs2", "csgo", "cs:go", "counter strike", "counter-strike"],
+  },
+  { name: "VALORANT", logo: "/games/valorant.png", aliases: ["val"] },
   { name: "Minecraft", logo: "/games/minecraft.png", aliases: ["minecraft java", "minecraft bedrock"] },
   {
     name: "ARK: Survival Ascended",
@@ -21,6 +27,12 @@ export const GAMES: Game[] = [
     aliases: ["ark", "ark ascended", "ark survival", "ark survival evolved"],
   },
   { name: "DayZ", logo: "/games/dayz.png" },
+  { name: "7 Days to Die", logo: "/games/seven-days.png", aliases: ["7 days", "7dtd", "seven days to die"] },
+  { name: "SCUM", logo: "/games/scum.png" },
+  { name: "Valheim", logo: "/games/valheim.png" },
+  { name: "Satisfactory", logo: "/games/satisfactory.png" },
+  { name: "Unturned", logo: "/games/unturned.png" },
+  { name: "Enshrouded", logo: "/games/enshrouded.png" },
   { name: "Call of Duty", logo: "/games/call-of-duty.png", aliases: ["cod", "warzone", "call of duty warzone"] },
   { name: "Palworld", logo: "/games/palworld.png" },
   { name: "Conan Exiles", logo: "/games/conan-exiles.png", aliases: ["conan"] },
@@ -40,12 +52,18 @@ export const OTHER_GAME = "Other";
 /** Shortlist offered when posting: the survival-shooter staples, then Other. */
 export const GAME_PICKS = [
   "Rust",
+  "Counter-Strike 2",
+  "VALORANT",
   "Minecraft",
   "ARK: Survival Ascended",
   "DayZ",
-  "Call of Duty",
+  "7 Days to Die",
+  "SCUM",
+  "Valheim",
+  "Satisfactory",
+  "Unturned",
+  "Enshrouded",
   "Palworld",
-  "Conan Exiles",
   OTHER_GAME,
 ];
 
@@ -74,9 +92,17 @@ export function isCatalogGame(name: string): boolean {
  */
 export const GAME_CATEGORIES: Record<string, string> = {
   Rust: "Survival",
+  "Counter-Strike 2": "Shooter",
+  VALORANT: "Shooter",
   Minecraft: "Sandbox",
   "ARK: Survival Ascended": "Survival",
   DayZ: "Survival",
+  "7 Days to Die": "Survival",
+  SCUM: "Survival",
+  Valheim: "Survival",
+  Satisfactory: "Factory",
+  Unturned: "Survival",
+  Enshrouded: "Survival",
   "Call of Duty": "Shooter",
   Palworld: "Adventure",
   "Conan Exiles": "Survival",

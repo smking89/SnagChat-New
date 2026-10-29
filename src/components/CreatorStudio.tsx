@@ -29,7 +29,6 @@ export type CreatorStudioProps = {
   onConnectStripe: (account: StripeAccount) => void;
   onDisconnectStripe: () => void;
   onToast: (text: string, detail?: string) => void;
-  onOpenGuidelines?: () => void;
 };
 
 const COUNTRIES = [
@@ -44,10 +43,10 @@ const COUNTRIES = [
 ];
 
 const TARGET_LABEL: Record<FrameTarget, string> = {
-  avatar: "Avatar borders",
-  banner: "Banner borders",
+  avatar: "Avatar frames",
+  banner: "Banner frames",
   nameplate: "Message nameplates",
-  snag: "Post borders",
+  snag: "Card frames",
 };
 
 const slugify = (value: string) =>
@@ -106,7 +105,6 @@ export function CreatorStudio({
   onConnectStripe,
   onDisconnectStripe,
   onToast,
-  onOpenGuidelines,
 }: CreatorStudioProps) {
   // --- verification gate ---------------------------------------------------
   if (!verified) {
@@ -120,21 +118,14 @@ export function CreatorStudio({
             Creator access is verified-only
           </h3>
           <p className="mx-auto mt-2 max-w-[42ch] text-[12.5px] leading-relaxed text-muted">
-            SnagChat Creator products — borders and nameplates sold in the shop — are reserved for
+            SnagChat Creator products — frames and nameplates sold in the shop — are reserved for
             verified players and businesses. Verification is how buyers know who they are buying
             from.
           </p>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-            <button type="button" onClick={onRequestVerification} className={primaryButton}>
-              <Icon name="verified" size={15} />
-              Request verification
-            </button>
-            {onOpenGuidelines ? (
-              <button type="button" onClick={onOpenGuidelines} className={quietButton}>
-                Read the guidelines
-              </button>
-            ) : null}
-          </div>
+          <button type="button" onClick={onRequestVerification} className={`${primaryButton} mt-5`}>
+            <Icon name="verified" size={15} />
+            Request verification
+          </button>
           <p className="mx-auto mt-3 max-w-[40ch] text-[10.5px] leading-relaxed text-faint">
             Demo build: verification is approved instantly. Production reviews your account, posts
             and business details before granting creator access.
@@ -152,7 +143,6 @@ export function CreatorStudio({
         verified={verified}
         onSubmit={onSubmitCreator}
         onToast={onToast}
-        onOpenGuidelines={onOpenGuidelines}
       />
     );
   }
@@ -221,7 +211,7 @@ export function CreatorStudio({
 
         {myProducts.length === 0 ? (
           <p className="mt-4 rounded-xl border border-dashed border-[#e2e5e9] px-4 py-8 text-center text-[12px] text-muted">
-            Nothing published yet. Build a border above and it lands in the shop under your store
+            Nothing published yet. Build a frame above and it lands in the shop under your store
             name.
           </p>
         ) : (
@@ -284,13 +274,11 @@ function ApplicationForm({
   verified,
   onSubmit,
   onToast,
-  onOpenGuidelines,
 }: {
   creator: CreatorApplication;
   verified: boolean;
   onSubmit: (application: CreatorApplication) => void;
   onToast: (text: string, detail?: string) => void;
-  onOpenGuidelines?: () => void;
 }) {
   const [storeName, setStoreName] = useState(creator.storeName ?? "");
   const [target, setTarget] = useState<FrameTarget>(creator.target ?? "avatar");
@@ -334,15 +322,10 @@ function ApplicationForm({
         </div>
 
         <p className="mt-3 text-[12px] leading-relaxed text-muted">
-          Creators design static borders and nameplates and sell them in the SnagChat Shop. Every
+          Creators design static frames and nameplates and sell them in the SnagChat Shop. Every
           sale pays you the list price minus SnagChat&apos;s 2.5% marketplace fee — no listing fee,
           no monthly fee.
         </p>
-        {onOpenGuidelines ? (
-          <button type="button" onClick={onOpenGuidelines} className={`${quietButton} mt-3`}>
-            Read the cosmetic guidelines first
-          </button>
-        ) : null}
 
         <div className="mt-5 space-y-4">
           <Field id="creator-store" label="Store name" hint="Shown on every product in the shop.">
@@ -505,10 +488,10 @@ function ProductBuilder({
     <section className="rounded-2xl border border-line bg-white p-5">
       <Eyebrow>Create</Eyebrow>
       <h4 className="mt-1 font-display text-[16px] font-extrabold tracking-[-0.03em]">
-        Build a shop product
+        Build a frame product
       </h4>
       <p className="mt-1 text-[11px] leading-relaxed text-muted">
-        Borders are static artwork. Pick a template, price it, and buyers can pair it with any
+        Frames are static artwork. Pick a template, price it, and buyers can pair it with any
         effect in the shop.
       </p>
 
@@ -540,7 +523,7 @@ function ProductBuilder({
 
         <form onSubmit={publish} className="space-y-3">
           <div>
-            <p className="text-[11px] font-bold text-[#4d535c]">Product type</p>
+            <p className="text-[11px] font-bold text-[#4d535c]">Frame type</p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {TARGETS.map((option) => (
                 <button
@@ -712,7 +695,7 @@ function SellerDashboard({
   const calcCents = Math.round((Number.parseFloat(calculator) || 0) * 100);
   const calcFee = feeFor(calcCents);
   const nameFor = (frameId: string) =>
-    products.find((product) => product.id === frameId)?.name ?? "Border";
+    products.find((product) => product.id === frameId)?.name ?? "Frame";
 
   const openOnboarding = () => {
     setStep(1);
@@ -849,7 +832,7 @@ function SellerDashboard({
           {sales.length === 0 ? (
             <p className="mt-2 rounded-xl bg-surface px-3 py-6 text-center text-[11.5px] leading-relaxed text-muted">
               No sales yet. Your first sale nets {formatPrice(Math.round(499 * 0.975))} on a{" "}
-              {formatPrice(499)} border — 97.5% of the list price.
+              {formatPrice(499)} frame — 97.5% of the list price.
             </p>
           ) : (
             <>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { GAME_PICKS, OTHER_GAME } from "../data/games";
-import { COVER_PRESETS, type SnagCategory, type SnagDraft } from "../data/snags";
+import { type SnagCategory, type SnagDraft } from "../data/snags";
 import { CLIP_HINTS, CLIP_LIMITS, formatBytes } from "../lib/clipLimits";
 import { saveClip } from "../lib/clipStore";
 import { fileToClip, fileToCover, UPLOAD_HINTS, type CoverUpload } from "../lib/imageUpload";
@@ -38,7 +38,6 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
   const [game, setGame] = useState<string>(GAME_PICKS[0]);
   const [customGame, setCustomGame] = useState("");
   const [category, setCategory] = useState<SnagCategory>(squad ? "Squad Galleries" : "Clips");
-  const [coverId, setCoverId] = useState(COVER_PRESETS[0].id);
   const [upload, setUpload] = useState<(CoverUpload & { name: string }) | null>(null);
   const [useUpload, setUseUpload] = useState(false);
   const [clip, setClip] = useState<ClipDraft | null>(null);
@@ -46,16 +45,19 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
   const [coverError, setCoverError] = useState<string | null>(null);
   const previewUrl = useRef<string | null>(null);
 
-  const preset = COVER_PRESETS.find((item) => item.id === coverId) ?? COVER_PRESETS[0];
   const usingUpload = !clip && useUpload && upload !== null;
+  /**
+   * A post needs artwork of your own — the poster frame of a clip you picked or
+   * an image you uploaded. There are no stock covers to fall back on.
+   */
   const cover = clip
     ? { image: clip.poster, aspect: clip.aspect }
     : usingUpload && upload
       ? upload
-      : preset;
+      : null;
   const postingGame = game === OTHER_GAME ? customGame.trim() : game;
   const overTags = tagOverflow(title);
-  const canPost = title.trim().length > 0 && postingGame.length > 0 && overTags === 0;
+  const canPost = title.trim().length > 0 && postingGame.length > 0 && overTags === 0 && cover !== null;
 
   // The picked file's blob URL only needs to live as long as this sheet is open.
   useEffect(
@@ -116,14 +118,14 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (!canPost) return;
+    if (!canPost || !cover) return;
     onPost({
       title: title.trim(),
       game: postingGame,
       category: squad ? "Squad Galleries" : category,
       image: cover.image,
       aspect: cover.aspect,
-      duration: clip ? clip.duration : category === "Clips" && !usingUpload ? "0:22" : undefined,
+      duration: clip?.duration,
       clipId: clip?.id,
       squadId: squad?.id,
     });
@@ -166,33 +168,6 @@ export function ComposeSheet({ squad, onClose, onPost }: ComposeSheetProps) {
             Clips: {CLIP_HINTS.clip} {CLIP_HINTS.poster}
           </p>
           <div className="mt-2 grid grid-cols-4 gap-2">
-            {COVER_PRESETS.map((item) => {
-              const isSelected = !clip && !usingUpload && item.id === coverId;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setCoverId(item.id);
-                    setUseUpload(false);
-                    clearClip();
-                  }}
-                  aria-pressed={isSelected}
-                  aria-label={item.label}
-                  className={`relative aspect-square overflow-hidden rounded-xl transition-shadow ${
-                    isSelected ? "ring-2 ring-ink ring-offset-2" : "hover:opacity-90"
-                  }`}
-                >
-                  <img src={item.image} alt="" className="h-full w-full object-cover" draggable={false} />
-                  {isSelected ? (
-                    <span className="absolute right-1.5 top-1.5 grid h-5 w-5 place-items-center rounded-full bg-white text-ink">
-                      <Icon name="check" size={12} strokeWidth={2.6} />
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
-
             {clip ? (
               <span
                 aria-label={`Cover frame from ${clip.name}`}

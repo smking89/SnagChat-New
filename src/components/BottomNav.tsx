@@ -1,3 +1,4 @@
+import { SHOP_ENABLED } from "../lib/features";
 import type { NavTab } from "../types";
 import { Icon } from "./Icon";
 
@@ -8,11 +9,12 @@ type BottomNavProps = {
   unreadCount: number;
 };
 
-type NavIcon = "home" | "compass" | "dm" | "user";
+type NavIcon = "home" | "compass" | "dm" | "user" | "shop";
 
 const ITEMS: { tab: NavTab; label: string; icon: NavIcon }[] = [
   { tab: "home", label: "Home", icon: "home" },
   { tab: "discover", label: "Discover", icon: "compass" },
+  { tab: "shop", label: "Shop", icon: "shop" },
   { tab: "messages", label: "Messages", icon: "dm" },
   { tab: "profile", label: "Profile", icon: "user" },
 ];
@@ -53,7 +55,22 @@ function NavItem({
 }
 
 export function BottomNav({ activeTab, onNavigate, onCreate, unreadCount }: BottomNavProps) {
-  const [home, discover, messages, profile] = ITEMS;
+  // The storefront is parked, so its tab comes out and the create button stays
+  // centred between the tabs that are left.
+  const items = ITEMS.filter((item) => SHOP_ENABLED || item.tab !== "shop");
+  const half = Math.ceil(items.length / 2);
+  const left = items.slice(0, half);
+  const right = items.slice(half);
+
+  const renderItem = (item: (typeof items)[number]) => (
+    <NavItem
+      key={item.tab}
+      {...item}
+      isActive={activeTab === item.tab}
+      badge={item.tab === "messages" ? unreadCount : 0}
+      onClick={() => onNavigate(item.tab)}
+    />
+  );
 
   return (
     <nav
@@ -61,9 +78,11 @@ export function BottomNav({ activeTab, onNavigate, onCreate, unreadCount }: Bott
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 backdrop-blur-xl lg:hidden"
       style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
     >
-      <div className="mx-auto grid max-w-[560px] grid-cols-5 items-center px-2 pt-2">
-        <NavItem {...home} isActive={activeTab === home.tab} onClick={() => onNavigate(home.tab)} />
-        <NavItem {...discover} isActive={activeTab === discover.tab} onClick={() => onNavigate(discover.tab)} />
+      <div
+        className="mx-auto grid max-w-[560px] items-center px-2 pt-2"
+        style={{ gridTemplateColumns: `repeat(${items.length + 1}, minmax(0, 1fr))` }}
+      >
+        {left.map(renderItem)}
 
         <div className="flex justify-center">
           <button
@@ -76,13 +95,7 @@ export function BottomNav({ activeTab, onNavigate, onCreate, unreadCount }: Bott
           </button>
         </div>
 
-        <NavItem
-          {...messages}
-          isActive={activeTab === messages.tab}
-          badge={unreadCount}
-          onClick={() => onNavigate(messages.tab)}
-        />
-        <NavItem {...profile} isActive={activeTab === profile.tab} onClick={() => onNavigate(profile.tab)} />
+        {right.map(renderItem)}
       </div>
     </nav>
   );

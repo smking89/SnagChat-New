@@ -9,6 +9,7 @@ type SquadsScreenProps = {
   currentUserId: string;
   postCounts: Record<string, number>;
   onClose: () => void;
+  onCreateSquad: () => void;
   onOpenSquad: (squadId: string) => void;
   onAcceptInvite: (inviteId: string) => void;
   onDeclineInvite: (inviteId: string) => void;
@@ -20,6 +21,7 @@ export function SquadsScreen({
   currentUserId,
   postCounts,
   onClose,
+  onCreateSquad,
   onOpenSquad,
   onAcceptInvite,
   onDeclineInvite,
@@ -34,7 +36,21 @@ export function SquadsScreen({
 
   return (
     <Screen labelledBy="squads-title" onClose={onClose}>
-      <ScreenHeader title="Squads" titleId="squads-title" onBack={onClose} />
+      <ScreenHeader
+        title="Squads"
+        titleId="squads-title"
+        onBack={onClose}
+        action={
+          <button
+            type="button"
+            onClick={onCreateSquad}
+            aria-label="Create squad"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-surface"
+          >
+            <Icon name="plus" size={19} />
+          </button>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[720px] px-4 py-4">
@@ -76,7 +92,8 @@ export function SquadsScreen({
                             {inviter ? `${inviter.name} invited you` : "You have an invite"}
                           </p>
                           <p className="truncate text-[10.5px] text-muted">
-                            {squad.name} · {squad.members.length} members
+                            {squad.name} · {squad.members.length}{" "}
+                            {squad.members.length === 1 ? "member" : "members"}
                           </p>
                         </div>
                       </div>
@@ -169,7 +186,7 @@ export function SquadsScreen({
                               {squad.visibility}
                             </span>
                             <span className="truncate">
-                            {squad.members.length} members
+                            {squad.members.length} {squad.members.length === 1 ? "member" : "members"}
                             {owner ? ` · @${owner.handle}` : ""} · {posts} {posts === 1 ? "post" : "posts"}
                             </span>
                           </span>
@@ -186,10 +203,17 @@ export function SquadsScreen({
             </>
           ) : (
             <div className="mt-6 rounded-2xl border border-dashed border-[#e2e5e9] px-4 py-10 text-center">
-              <p className="text-[12.5px] font-semibold">No squads left</p>
-              <p className="mx-auto mt-1 max-w-[30ch] text-[11.5px] leading-relaxed text-muted">
-                Deleted squads and their galleries are removed from this preview.
+              <p className="text-[12.5px] font-semibold">No squads yet</p>
+              <p className="mx-auto mt-1 max-w-[32ch] text-[11.5px] leading-relaxed text-muted">
+                Start one for the people you queue with, then invite them from the squad screen.
               </p>
+              <button
+                type="button"
+                onClick={onCreateSquad}
+                className="mt-4 h-10 rounded-full bg-ink px-5 text-[12px] font-semibold text-white transition-colors hover:bg-[#22252a]"
+              >
+                Create squad
+              </button>
             </div>
           )}
         </div>

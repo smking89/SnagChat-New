@@ -12,8 +12,8 @@ generated.
 
 ### Added
 
-- 24-hour stories: a rail above the feed with your own ring and add control, a tap-through full-screen viewer with progress bars, auto-advance, arrow-key control and a **View post** jump, and an **Add to your story** action on every non-sponsored snag that credits the original creator when you share someone else's post. The composer accepts an uploaded photo or one of your own posts with an optional caption. Stories persist in `snagchat:stories` and watched ids in `snagchat:story-seen`, and expire from the rail after 24 hours.
-- `src/data/stories.test.ts` covers the 24-hour window, author grouping, ordering and de-duplicated resharing, taking `npm test` to 30 assertions.
+- Squads can be created in the app: name the squad, choose a public or private gallery, and you land on it as the owner with an empty roster ready for invites.
+- Counter-Strike 2, VALORANT, 7 Days to Die, SCUM, Valheim, Satisfactory, Unturned and Enshrouded are in the game catalogue, so they appear in the compose and edit pickers, the top-games sheet and the welcome interests.
 - Deleting a squad can be undone from the confirmation toast: the squad, its gallery posts, your own posts on your profile grid and any pending invites all come back.
 - Saving profile changes — name, handle, bio, photo, banner and region — can be undone in one tap, including the username rewrite on your own posts and the account record.
 - `CHANGELOG.md` with the history below, plus a workflow that appends each push to `main` and a CI workflow that typechecks and builds every push and pull request.
@@ -33,9 +33,15 @@ generated.
 
 ### Changed
 
-- The feed is a brick bond instead of an aligned table grid: every card keeps the identical 4:5 media frame and 86px meta strip, while alternate columns start half a card lower. This restores the masonry read without letting card heights drift.
-- Scrollbars are hidden across the GUI — page, rails and sheets — while scrolling still works, so card and panel edges stay flush.
-- Demo sessions now show a **Log in** button in the header and **Log in or create an account** in Profile → Settings; the same sheet (plus the profile editor's Account section) carries **Log out** for every signed-in account.
+- The squads empty state reads **No squads yet** and offers a Create squad button, with a matching create action in the squads header once the first one exists.
+- The app ships no placeholder content: the seeded players, posts, threads, squads, invites, notifications, likes/saves/shares/comments and pre-worn frames are all gone. The feed, inbox, notifications and squads open on empty states, a new account starts at 0 followers with an empty bio, and the seeded collections use fresh storage keys so a browser that cached the old demo starts clean.
+- Posting starts from your own artwork: the four stock cover templates are out of the composer, and Post snag stays disabled until you upload an image or pick a clip (the made-up `0:22` clip length went with them).
+- The ranking tests keep their fixed corpus in `src/engine/seed-corpus.ts`, which only the test suite imports.
+- The header is pinned at every width, not just from `lg`, so the search, notifications and squads actions keep their exact spot while the feed scrolls; the category rail parks directly under it using the published `--topbar-h`.
+- The storefront is parked behind `SHOP_ENABLED` in `src/lib/features.ts`: the Shop tab, the footer's Frame shop link, the profile's frame-studio button and the shop screen itself are all off for every account, demo ones included, so the seller tools and Stripe payouts cannot be reached.
+- Game logos are bare artwork — no pill or plate around them and no shadow, glow or outline — in the composer picker, the top-games sheet and post headers. Picking a title bolds its name and ticks it instead of filling a capsule.
+- Unturned uses the SteamGridDB icon, converted from the `.ico` to the 256px PNG the catalogue expects.
+- Game artwork is the published square app icon for every title that has one (Rust, CS2, VALORANT, Minecraft, ARK, DayZ, 7 Days to Die, SCUM, Valheim, Satisfactory, Unturned, Enshrouded, Palworld), replacing the old white wordmarks; titles without one keep their existing logo.
 - `npm test` also runs `src/data/*.test.ts`, so the fee and catalogue tests run with the engine suite in CI.
 - The auth screen's primary actions are white with black text, and the Steam, Xbox and Discord tiles are white with black labels and marks instead of purple.
 - GIFs are accepted but saved as a rebuilt still frame instead of an animated file, because the sandbox writes fresh pixels rather than copying the original container.
@@ -51,30 +57,6 @@ generated.
 - The welcome highlights draw their icons inline, so "Players worth following" keeps its icon even when the brand PNG cannot be fetched.
 - The app declares `color-scheme: only light`, so Chrome and Android WebView forced dark mode no longer invert the white auth buttons and darken the welcome screen.
 - The green online dot paints on top of ringed, coloured and video avatars, and the add-photo badge no longer covers it — that badge owns the corner only while your own profile has no photo, so the dot is hidden in that one state.
-
-## [2026-10-29] — cad7d40
-
-- ci(developer): typecheck and build the portal on every push
-
-## [2026-10-29] — 619a0c9
-
-- feat(developer): add the developer portal site
-
-## [2026-10-29] — 9e663f6
-
-- fix(api): accept the dev proxy origin for csrf checks locally
-
-## [2026-10-29] — 6848dee
-
-- feat(admin): add staff admin portal with a role-scoped API
-
-## [2026-10-28] — a8dff9a
-
-- Fix APK blank page by loading the WebView's asset host
-
-## [2026-10-28] — 4bffba0
-
-- Add stories, shop, creator studio, frames and the rebuilt APK
 
 ## [1.0.0] — 2026-10-27
 
@@ -104,9 +86,3 @@ generated.
 ### Added
 
 - Initial cloud project and the first build of the SnagChat preview.
-
-
-
-
-
-

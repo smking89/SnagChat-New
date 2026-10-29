@@ -132,15 +132,11 @@ export function InboxScreen({
                           <Nameplate
                             text={player.name}
                             use={nameplateFor?.(player.id)}
+                            verified={player.verified}
                             className="min-w-0"
                             textClassName="truncate"
                           />
-                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-muted">
-                            @{player.handle}
-                            {player.verified ? (
-                              <Icon name="verified" size={12} className="shrink-0 text-[#1d9bf0]" />
-                            ) : null}
-                          </span>
+                          <span className="shrink-0 text-[11px] font-medium text-muted">@{player.handle}</span>
                         </span>
                         <span className="shrink-0 text-[10px] font-medium text-faint">
                           {formatRelative(thread.updatedAt)}
@@ -392,18 +388,20 @@ export function ThreadScreen({
                   <Nameplate
                     text={player.name}
                     use={playerNameplate}
+                    verified={player.verified}
                     textClassName="truncate"
                   />
                 ) : (
-                  <span className="truncate">{player.name}</span>
+                  <>
+                    <span className="truncate">{player.name}</span>
+                    {player.verified ? (
+                      <Icon name="verified" size={12} className="shrink-0 text-[#1d9bf0]" />
+                    ) : null}
+                  </>
                 )}
               </span>
-              <span className="flex items-center gap-1 text-[10px] font-medium text-muted">
-                <span className="truncate">@{player.handle}</span>
-                {player.verified ? (
-                  <Icon name="verified" size={12} className="shrink-0 text-[#1d9bf0]" />
-                ) : null}
-                <span className="shrink-0">· {player.online ? "online" : "offline"}</span>
+              <span className="block truncate text-[10px] font-medium text-muted">
+                @{player.handle} · {player.online ? "online" : "offline"}
               </span>
             </span>
           </button>

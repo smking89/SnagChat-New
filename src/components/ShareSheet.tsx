@@ -31,10 +31,12 @@ export function ShareSheet({
   onOpenAuthor,
   onShared,
 }: ShareSheetProps) {
-  const [recipient, setRecipient] = useState<Recipient>(
+  const [recipient, setRecipient] = useState<Recipient | null>(
     squads.length > 0
       ? { kind: "squad", id: squads[0].id }
-      : { kind: "player", id: SEND_TO_PLAYERS[0].id },
+      : SEND_TO_PLAYERS.length > 0
+        ? { kind: "player", id: SEND_TO_PLAYERS[0].id }
+        : null,
   );
   const [message, setMessage] = useState(quick ? `Check out this snag: ${snag.title}` : "");
   const [sent, setSent] = useState(false);
@@ -58,11 +60,12 @@ export function ShareSheet({
     if (outcome === "shared" || outcome === "copied") onShared();
   };
 
-  const squad = recipient.kind === "squad" ? squads.find((item) => item.id === recipient.id) : undefined;
-  const player = recipient.kind === "player" ? findPlayer(recipient.id) : undefined;
-  const targetName = squad ? squad.name : `@${player?.handle ?? "player"}`;
+  const squad = recipient?.kind === "squad" ? squads.find((item) => item.id === recipient.id) : undefined;
+  const player = recipient?.kind === "player" ? findPlayer(recipient.id) : undefined;
+  const targetName = squad ? squad.name : player ? `@${player.handle}` : "";
 
   const handleSend = () => {
+    if (!recipient) return;
     onShared();
     if (recipient.kind === "player" && player) {
       onSendToPlayer(player.id, message, snag);
@@ -182,7 +185,7 @@ export function ShareSheet({
               <p className="mt-5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#4d535c]">Squads</p>
               <div className="no-scrollbar -mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1">
                 {squads.map((item) => {
-                  const isSelected = recipient.kind === "squad" && recipient.id === item.id;
+                  const isSelected = recipient?.kind === "squad" && recipient.id === item.id;
                   return (
                     <button
                       key={item.id}
@@ -208,9 +211,14 @@ export function ShareSheet({
           ) : null}
 
           <p className="mt-4 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#4d535c]">Players</p>
+          {SEND_TO_PLAYERS.length === 0 ? (
+            <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted">
+              No one to send to yet — squads and players show up here once you follow or join them.
+            </p>
+          ) : null}
           <div className="no-scrollbar -mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1">
             {SEND_TO_PLAYERS.map((item) => {
-              const isSelected = recipient.kind === "player" && recipient.id === item.id;
+              const isSelected = recipient?.kind === "player" && recipient.id === item.id;
               return (
                 <button
                   key={item.id}
@@ -253,9 +261,10 @@ export function ShareSheet({
           <button
             type="button"
             onClick={handleSend}
-            className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand text-[13px] font-semibold text-white transition-colors hover:bg-brand-deep"
+            disabled={!recipient}
+            className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand text-[13px] font-semibold text-white transition-colors hover:bg-brand-deep disabled:cursor-not-allowed disabled:bg-[#e4dbe9] disabled:text-[#a99bb2]"
           >
-            Send to {targetName}
+            {recipient ? `Send to ${targetName}` : "Send"}
             <Icon name="send" size={16} strokeWidth={2} />
           </button>
 

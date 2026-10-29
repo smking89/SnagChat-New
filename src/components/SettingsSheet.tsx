@@ -21,7 +21,6 @@ type SettingsSheetProps = {
   onManageDial: () => void;
   onDownload: () => void;
   onDelete: () => void;
-  onSignOut: () => void;
   onClose: () => void;
 };
 
@@ -42,7 +41,6 @@ export function SettingsSheet({
   onManageDial,
   onDownload,
   onDelete,
-  onSignOut,
   onClose,
 }: SettingsSheetProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -215,33 +213,6 @@ export function SettingsSheet({
         >
           <Icon name="download" size={14} strokeWidth={2.1} />
           Download my data
-        </button>
-      </div>
-
-      <div className="mt-5 border-t border-line pt-4">
-        <SectionLabel>Session</SectionLabel>
-        <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
-          {isDemoSession
-            ? "You are looking around in a demo session, so nothing is tied to an account yet. Log in or create one to keep your profile, posts and purchases."
-            : "You are signed in on this browser. Logging out clears the session here; your posts and profile stay on the account."}
-        </p>
-        {isDemoSession ? (
-          <button
-            type="button"
-            onClick={onSignOut}
-            className="mt-2 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-brand px-4 text-[12px] font-semibold text-white transition-colors hover:bg-brand-deep"
-          >
-            Log in or create an account
-          </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={onSignOut}
-          className={`mt-2 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-line px-4 text-[12px] font-semibold transition-colors hover:border-[#d8dce1] ${
-            isDemoSession ? "text-[#4d535c]" : "text-[#b3261e]"
-          }`}
-        >
-          Log out
         </button>
       </div>
 

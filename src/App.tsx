@@ -3,6 +3,7 @@ import { AdvertiseScreen } from "./components/AdvertiseScreen";
 import { AuthScreen } from "./components/AuthScreen";
 import { BottomNav } from "./components/BottomNav";
 import { ComposeSheet } from "./components/ComposeSheet";
+import { CreateSquadSheet } from "./components/CreateSquadSheet";
 import { EditSnagSheet } from "./components/EditSnagSheet";
 import { FilterRail } from "./components/FilterRail";
 import { LegalSheet } from "./components/LegalSheet";
@@ -18,9 +19,6 @@ import { SnagCard } from "./components/SnagCard";
 import { SnagScreen, type CommentView } from "./components/SnagScreen";
 import { SquadScreen } from "./components/SquadScreen";
 import { SquadsScreen } from "./components/SquadsScreen";
-import { StoriesRail } from "./components/StoriesRail";
-import { StoryComposerSheet, type StoryDraft } from "./components/StoryComposerSheet";
-import { StoryViewer } from "./components/StoryViewer";
 import { Toast, type ToastMessage } from "./components/Toast";
 import { TopBar } from "./components/TopBar";
 import { TopGamesSheet } from "./components/TopGamesSheet";
@@ -41,14 +39,8 @@ import {
 import { COPYRIGHT_YEAR, LEGAL_DOCS, findLegalDoc } from "./data/legal";
 import { SEED_NOTIFICATIONS, type AppNotification } from "./data/notifications";
 import { findPlayer, findPlayerId, ME, PLAYERS, type Player } from "./data/players";
-import {
-  CATEGORIES,
-  nextCategory,
-  SEED_SNAGS,
-  type FeedFilter,
-  type Snag,
-  type SnagDraft,
-} from "./data/snags";
+import { SHOP_ENABLED } from "./lib/features";
+import { CATEGORIES, nextCategory, type FeedFilter, type Snag, type SnagDraft } from "./data/snags";
 import {
   canSeeGallery,
   SEED_INVITES,
@@ -58,15 +50,6 @@ import {
   type SquadMember,
   type SquadVisibility,
 } from "./data/squads";
-import {
-  addStoryItem,
-  freshStories,
-  groupStories,
-  hasSharedSnag,
-  SEED_STORIES,
-  type StoryGroupView,
-  type StoryItem,
-} from "./data/stories";
 import {
   liveMessages,
   SEED_THREADS,
@@ -134,17 +117,19 @@ export default function App() {
     handle: ME.handle,
     bio: ME.bio,
   });
-  const [threads, setThreads] = usePersistentState<Record<string, Thread>>("snagchat:threads", SEED_THREADS);
+  // The seeded collections live under fresh keys so a browser that stored the
+  // old placeholder threads, squads or notifications starts clean instead.
+  const [threads, setThreads] = usePersistentState<Record<string, Thread>>("snagchat:v2:threads", SEED_THREADS);
   const [likes, setLikes] = usePersistentState<string[]>("snagchat:likes", []);
   const [saves, setSaves] = usePersistentState<string[]>("snagchat:saves", []);
   const [sharedSnags, setSharedSnags] = usePersistentState<string[]>("snagchat:shared", []);
   const [userComments, setUserComments] = usePersistentState<Record<string, Comment[]>>("snagchat:comments", {});
-  const [squads, setSquads] = usePersistentState<Squad[]>("snagchat:squads", SEED_SQUADS);
-  const [invites, setInvites] = usePersistentState<SquadInvite[]>("snagchat:squad-invites", SEED_INVITES);
+  const [squads, setSquads] = usePersistentState<Squad[]>("snagchat:v2:squads", SEED_SQUADS);
+  const [invites, setInvites] = usePersistentState<SquadInvite[]>("snagchat:v2:squad-invites", SEED_INVITES);
   const [session, setSession] = usePersistentState<Session | null>("snagchat:session", null);
   const [onboarded, setOnboarded] = usePersistentState<boolean>("snagchat:onboarded", false);
   const [notifications, setNotifications] = usePersistentState<AppNotification[]>(
-    "snagchat:notifications",
+    "snagchat:v2:notifications",
     SEED_NOTIFICATIONS,
   );
   const [reports, setReports] = usePersistentState<Record<string, { mode: ReportMode; reason: string; at: number }>>(
@@ -176,15 +161,11 @@ export default function App() {
   const [dial, setDial] = useState<DialState | null>(null);
   const [dialConfigRaw, setDialConfigRaw] = usePersistentState<DialConfig>("snagchat:dial", DIAL_DEFAULTS);
   const [manageDial, setManageDial] = useState(false);
+  const [createSquadOpen, setCreateSquadOpen] = useState(false);
   const [topGames, setTopGames] = useState(false);
   const [customTags, setCustomTags] = usePersistentState<string[]>("snagchat:tags", []);
   /** Snags flicked into a squad gallery from the feed. */
   const [squadShares, setSquadShares] = usePersistentState<Snag[]>("snagchat:squad-shares", []);
-  /** Your 24-hour stories, plus which items you have watched. */
-  const [myStories, setMyStories] = usePersistentState<StoryItem[]>("snagchat:stories", []);
-  const [seenStories, setSeenStories] = usePersistentState<string[]>("snagchat:story-seen", []);
-  const [storyComposer, setStoryComposer] = useState(false);
-  const [storyView, setStoryView] = useState<{ authorId: string; itemIndex: number } | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [composing, setComposing] = useState(false);
   const [composeSquadId, setComposeSquadId] = useState<string | null>(null);
@@ -226,8 +207,10 @@ export default function App() {
     setSearchOpen(false);
   };
 
+  // Only what people actually posted: your own snags plus the ones flicked into
+  // a squad gallery. Nothing is seeded in behind them.
   const snags = useMemo(
-    () => [...mySnags, ...squadShares, ...SEED_SNAGS].filter((snag) => !removedSnags.includes(snag.id)),
+    () => [...mySnags, ...squadShares].filter((snag) => !removedSnags.includes(snag.id)),
     [mySnags, squadShares, removedSnags],
   );
 
@@ -293,23 +276,8 @@ export default function App() {
     if (id === ME_ID) return mePlayer;
     const found = findPlayer(id);
     if (found) return found;
-    return { id, name: id, handle: id, bio: "Player on SnagChat.", game: "SnagChat", followers: 0, following: 0 };
+    return { id, name: id, handle: id, bio: "", game: "", followers: 0, following: 0 };
   };
-
-  /** Your story first, then everyone else's live story runs. */
-  const storyGroups: StoryGroupView[] = (() => {
-    const grouped = groupStories(freshStories([...myStories, ...SEED_STORIES]));
-    return [
-      ...grouped.filter((group) => group.authorId === ME_ID),
-      ...grouped.filter((group) => group.authorId !== ME_ID),
-    ].map((group) => ({
-      ...group,
-      author: resolvePlayer(group.authorId),
-      avatarFrame: loadoutFor(group.authorId, frameLoadout).avatar,
-    }));
-  })();
-  const myStoryItems = storyGroups.find((group) => group.authorId === ME_ID)?.items ?? [];
-  const otherStoryGroups = storyGroups.filter((group) => group.authorId !== ME_ID);
 
   const threadList = useMemo(() => Object.values(threads), [threads]);
   const unreadTotal = threadList.reduce((total, thread) => total + thread.unread, 0);
@@ -579,51 +547,6 @@ export default function App() {
    */
   const framesFor = (playerId: string): FrameLoadout => loadoutFor(playerId, frameLoadout);
 
-  const markStoriesSeen = (itemIds: string[]) => {
-    setSeenStories((current) => {
-      const next = new Set(current);
-      itemIds.forEach((id) => next.add(id));
-      return next.size === current.length ? current : Array.from(next);
-    });
-  };
-
-  const openStories = (authorId: string) => {
-    const group = storyGroups.find((entry) => entry.authorId === authorId);
-    if (!group || group.items.length === 0) {
-      if (authorId === ME_ID) setStoryComposer(true);
-      return;
-    }
-    const firstUnseen = group.items.findIndex((item) => !seenStories.includes(item.id));
-    setStoryView({ authorId, itemIndex: firstUnseen >= 0 ? firstUnseen : 0 });
-  };
-
-  const addStory = (draft: StoryDraft) => {
-    const item: StoryItem = {
-      id: `story-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      authorId: ME_ID,
-      image: draft.image,
-      caption: draft.caption,
-      game: draft.game,
-      at: Date.now(),
-      snagId: draft.snagId,
-      via: draft.via,
-    };
-    setMyStories((current) => addStoryItem(current, item));
-    setStoryComposer(false);
-    showToast("Added to your story", "It stays up for 24 hours.");
-  };
-
-  const addSnagToStory = (snag: Snag) => {
-    const creator = resolvePlayer(snag.creatorId ?? findPlayerId(snag.creator));
-    addStory({
-      image: snag.image,
-      caption: snag.title,
-      game: snag.game,
-      snagId: snag.id,
-      via: creator.id === ME_ID ? undefined : creator.handle,
-    });
-  };
-
   const buyFrame = (frame: Frame) => {
     const feeCents = feeFor(frame.priceCents);
     setOwnedFrames((current) => (current.includes(frame.id) ? current : [...current, frame.id]));
@@ -857,6 +780,21 @@ export default function App() {
         squad.id === squadId ? { ...squad, members: update(squad.members) } : squad,
       ),
     );
+  };
+
+  const createSquad = (values: { name: string; visibility: SquadVisibility }) => {
+    const id = `squad-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const squad: Squad = {
+      id,
+      name: values.name,
+      visibility: values.visibility,
+      members: [{ playerId: ME_ID, role: "owner" }],
+    };
+
+    setSquads((current) => [squad, ...current]);
+    setCreateSquadOpen(false);
+    pushScreen({ kind: "squad", squadId: id });
+    showToast("Squad created", `${squad.name} is ready for members.`);
   };
 
   /** Invites are pending: the player joins the roster only when they accept. */
@@ -1093,28 +1031,31 @@ export default function App() {
   };
 
   const navigate = (tab: NavTab) => {
-    setActiveTab(tab);
+    // The storefront is parked, so a stale "shop" tab lands on Home instead of
+    // opening a screen no account is supposed to reach.
+    const target: NavTab = tab === "shop" && !SHOP_ENABLED ? "home" : tab;
+    setActiveTab(target);
 
-    if (tab === "profile") {
+    if (target === "profile") {
       setStack([{ kind: "profile", playerId: ME_ID }]);
       return;
     }
 
-    if (tab === "messages") {
+    if (target === "messages") {
       setQuery("");
       setSearchOpen(false);
       setStack([{ kind: "messages" }]);
       return;
     }
 
-    if (tab === "squads") {
+    if (target === "squads") {
       setQuery("");
       setSearchOpen(false);
       setStack([{ kind: "squads" }]);
       return;
     }
 
-    if (tab === "shop") {
+    if (target === "shop") {
       setQuery("");
       setSearchOpen(false);
       setStack([{ kind: "shop" }]);
@@ -1124,7 +1065,7 @@ export default function App() {
     setQuery("");
     setSearchOpen(false);
 
-    if (tab === "home") {
+    if (target === "home") {
       setFilter("For You");
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
@@ -1226,8 +1167,6 @@ export default function App() {
         unreadCount={unreadTotal}
         notificationCount={unreadNotifications}
         onOpenNotifications={() => pushScreen({ kind: "notifications" })}
-        demoSession={session.demo}
-        onSignIn={signOut}
       />
 
       <main ref={feedSwipe}>
@@ -1246,16 +1185,6 @@ export default function App() {
         </section>
 
         <div className="mx-auto max-w-[1320px] px-4 sm:px-6">
-          <StoriesRail
-            myAuthor={mePlayer}
-            myItems={myStoryItems}
-            myAvatarFrame={framesFor(ME_ID).avatar}
-            groups={otherStoryGroups}
-            seen={seenStories}
-            onOpen={openStories}
-            onAdd={() => setStoryComposer(true)}
-          />
-
           <FilterRail active={filter} onChange={selectFilter} />
 
           <section id="feed" ref={feedRef} aria-label="Snag feed" className="scroll-mt-[62px] pt-5">
@@ -1265,9 +1194,12 @@ export default function App() {
                   {heading}
                 </h2>
                 <p className="mt-1 text-[11px] text-muted">
-                  {visibleSnags.length} {visibleSnags.length === 1 ? "snag" : "snags"} · tap to open, hold to
-                  quick-share
-                  <span className="lg:hidden"> · swipe a card to like or save</span>
+                  {visibleSnags.length === 0
+                    ? "No snags yet"
+                    : `${visibleSnags.length} ${visibleSnags.length === 1 ? "snag" : "snags"} · tap to open, hold to quick-share`}
+                  {visibleSnags.length > 0 ? (
+                    <span className="lg:hidden"> · swipe a card to like or save</span>
+                  ) : null}
                 </p>
               </div>
               {filter !== "For You" || query ? (
@@ -1283,13 +1215,13 @@ export default function App() {
 
             {visibleSnags.length > 0 ? (
               <div key={filter} className={`feed-swipe feed-swipe-${feedMotion}`}>
-                <div className="feed-brick">
+                <div className="columns-2 [column-gap:12px] md:columns-3 xl:columns-4">
                   {rankedSnags.map((snag) => {
                     const creator = resolvePlayer(snag.creatorId ?? findPlayerId(snag.creator));
                     const creatorLoadout = framesFor(creator.id);
                     return (
-                  <div key={snag.id} className="feed-brick-cell">
                   <SnagCard
+                    key={snag.id}
                     snag={snag}
                     creatorAvatar={creator.avatar}
                     creatorVerified={creator.verified}
@@ -1310,10 +1242,25 @@ export default function App() {
                     onEdit={mySnagIds.has(snag.id) ? (item) => setEditingSnag(item) : undefined}
                     onDelete={(item) => deletePost(item)}
                   />
-                  </div>
                     );
                   })}
                 </div>
+              </div>
+            ) : filter === "For You" && !query ? (
+              // A brand-new account: nothing to filter or clear, so offer the
+              // only thing that fills this feed.
+              <div className="rounded-2xl border border-dashed border-[#e2e5e9] px-5 py-14 text-center">
+                <p className="font-display text-[15px] font-extrabold tracking-[-0.02em]">Nothing here yet</p>
+                <p className="mx-auto mt-1.5 max-w-[36ch] text-[12px] leading-relaxed text-muted">
+                  Your feed fills up with the clips, loadouts and builds people post. Be the first.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => startCompose(null)}
+                  className="mt-4 h-9 rounded-full bg-ink px-4 text-[11.5px] font-semibold text-white transition-colors hover:bg-[#22252a]"
+                >
+                  Post a snag
+                </button>
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-[#e2e5e9] px-5 py-14 text-center">
@@ -1338,73 +1285,74 @@ export default function App() {
             ) : null}
           </section>
 
-          <footer className="mt-8 border-t border-line px-2 py-9">
-            <div className="mx-auto grid max-w-[720px] grid-cols-2 gap-x-6 gap-y-7 text-left sm:grid-cols-[1.2fr_1fr_1fr]">
-              <div className="col-span-2 flex flex-col gap-3 sm:col-span-1">
-                <img
-                  src="/brand/snagchat-wordmark.png"
-                  alt="SnagChat"
-                  width={445}
-                  height={201}
-                  className="h-9 w-auto self-start"
-                />
-                <p className="text-[12px] font-semibold text-muted">Capture the moment.</p>
-              </div>
-              <div className="flex flex-col gap-2.5">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-faint">Build &amp; grow</p>
+          <footer className="mt-8 border-t border-line py-9 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <img
+                src="/brand/snagchat-icon.png"
+                alt="SnagChat"
+                width={512}
+                height={512}
+                className="h-14 w-auto xl:hidden"
+              />
+              <img
+                src="/brand/snagchat-wordmark.png"
+                alt="SnagChat"
+                width={445}
+                height={201}
+                className="hidden h-10 w-auto xl:block"
+              />
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-faint">Play it. Share it.</p>
+              <p className="mx-auto max-w-[42ch] text-[11.5px] leading-relaxed text-muted">
+                Snags, loadouts and squad galleries in one feed. Built for the people you queue with.
+              </p>
+            </div>
+
+            <div className="mt-6 border-t border-line pt-6">
+              <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+                <button
+                  type="button"
+                  onClick={() => pushScreen({ kind: "advertise" })}
+                  className="text-[12px] font-semibold text-brand underline decoration-brand/30 underline-offset-4 transition-colors hover:decoration-brand"
+                >
+                  Advertise with us
+                </button>
                 <a
                   href="https://developer.snagchat.io"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-left text-[12px] font-semibold text-ink hover:text-brand"
+                  className="text-[12px] font-semibold text-[#4d535c] underline decoration-line underline-offset-4 transition-colors hover:text-ink hover:decoration-ink"
                 >
-                  Developer Portal
+                  Developer portal
                 </a>
-                <button
-                  type="button"
-                  onClick={() => pushScreen({ kind: "shop" })}
-                  className="text-left text-[12px] font-semibold text-ink hover:text-brand"
-                >
-                  Shop
-                </button>
-              </div>
-              <div className="flex flex-col gap-2.5">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-faint">Resources</p>
-                {LEGAL_DOCS.filter((doc) => doc.id === "guidelines").map((doc) => (
+                {SHOP_ENABLED ? (
                   <button
-                    key={doc.id}
                     type="button"
-                    onClick={() => setLegalDocId(doc.id)}
-                    className="text-left text-[12px] font-semibold text-ink hover:text-brand"
+                    onClick={() => pushScreen({ kind: "shop" })}
+                    className="text-[12px] font-semibold text-[#4d535c] underline decoration-line underline-offset-4 transition-colors hover:text-ink hover:decoration-ink"
                   >
-                    Guidelines
+                    Frame shop
                   </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => pushScreen({ kind: "advertise" })}
-                  className="text-left text-[12px] font-semibold text-ink hover:text-brand"
-                >
-                  Advertise with us
-                </button>
+                ) : null}
               </div>
-              <div className="flex flex-col gap-2.5">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-faint">Legal</p>
-                {LEGAL_DOCS.filter((doc) => doc.id !== "guidelines").map((doc) => (
+
+              <div className="mt-4 flex flex-col items-center gap-3">
+              <nav aria-label="Legal" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+                {LEGAL_DOCS.map((doc) => (
                   <button
                     key={doc.id}
                     type="button"
                     onClick={() => setLegalDocId(doc.id)}
-                    className="text-left text-[12px] font-semibold text-ink hover:text-brand"
+                    className="text-[12px] font-semibold text-[#4d535c] underline decoration-line underline-offset-4 transition-colors hover:text-ink hover:decoration-ink"
                   >
                     {doc.short}
                   </button>
                 ))}
+              </nav>
+              <p className="text-[11px] text-faint">© {COPYRIGHT_YEAR} SnagChat. All rights reserved.</p>
+              <p className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#b6bbc3]">
+                snagchat.io · developer.snagchat.io · advertise.snagchat.io
+              </p>
               </div>
-            </div>
-
-            <div className="mx-auto mt-8 max-w-[720px] border-t border-line pt-5 text-center">
-              <p className="text-[11px] text-faint">© {COPYRIGHT_YEAR} SnagChat.io All rights reserved.</p>
             </div>
           </footer>
         </div>
@@ -1488,37 +1436,6 @@ export default function App() {
         />
       ) : null}
 
-      {storyComposer ? (
-        <StoryComposerSheet
-          mySnags={mySnags}
-          game={mePlayer.game}
-          onAdd={addStory}
-          onCreate={() => {
-            setStoryComposer(false);
-            startCompose(null);
-          }}
-          onClose={() => setStoryComposer(false)}
-        />
-      ) : null}
-
-      {storyView ? (
-        <StoryViewer
-          key={`${storyView.authorId}-${storyView.itemIndex}`}
-          groups={storyGroups}
-          startAuthorId={storyView.authorId}
-          meId={ME_ID}
-          startItem={storyView.itemIndex}
-          onSeen={markStoriesSeen}
-          onOpenSnag={(snagId) => {
-            const target = snags.find((snag) => snag.id === snagId);
-            if (!target) return;
-            setStoryView(null);
-            openSnag(target);
-          }}
-          onClose={() => setStoryView(null)}
-        />
-      ) : null}
-
       {toast ? <Toast toast={toast} onDismiss={() => setToast(null)} /> : null}
 
       {report ? (
@@ -1543,6 +1460,10 @@ export default function App() {
           onClose={closeCompose}
           onPost={postSnag}
         />
+      ) : null}
+
+      {createSquadOpen ? (
+        <CreateSquadSheet onCreate={createSquad} onClose={() => setCreateSquadOpen(false)} />
       ) : null}
 
       {editingSnag ? (
@@ -1593,8 +1514,6 @@ export default function App() {
               reported={Boolean(reports[snag.id])}
               onOpenProfile={() => pushScreen({ kind: "profile", playerId: author.id })}
               onAddComment={(text) => addComment(snag.id, text)}
-              onAddToStory={snag.sponsoredBy ? undefined : () => addSnagToStory(snag)}
-              inStory={hasSharedSnag(myStories, snag.id)}
               onHashtag={searchTag}
               onMention={openProfile}
               isMine={author.id === ME_ID}
@@ -1662,6 +1581,7 @@ export default function App() {
               currentUserId={ME_ID}
               postCounts={squadPostCounts}
               onClose={popScreen}
+              onCreateSquad={() => setCreateSquadOpen(true)}
               onOpenSquad={(squadId) => pushScreen({ kind: "squad", squadId })}
               onAcceptInvite={acceptInvite}
               onDeclineInvite={declineInvite}
@@ -1700,6 +1620,8 @@ export default function App() {
         }
 
         if (screen.kind === "shop") {
+          if (!SHOP_ENABLED) return null;
+
           return (
             <ShopScreen
               key={key}
@@ -1767,7 +1689,7 @@ export default function App() {
             onDownloadData={downloadData}
             onDeleteAccount={deleteMyAccount}
             frames={framesFor(player.id)}
-            onOpenShop={() => pushScreen({ kind: "shop" })}
+            onOpenShop={SHOP_ENABLED ? () => pushScreen({ kind: "shop" }) : undefined}
           />
         );
       })}

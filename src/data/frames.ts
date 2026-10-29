@@ -393,30 +393,9 @@ export const DEFAULT_EFFECT: Record<FrameTarget, FrameEffectId> = {
 
 export const INCLUDED_FRAMES = FRAMES.filter((frame) => frame.included).map((frame) => frame.id);
 
-/**
- * Frames other players already wear. It keeps the feed and inbox from looking
- * like the shop only exists for you.
- */
-export const SEED_LOADOUTS: Record<string, FrameLoadout> = {
-  nyx: {
-    avatar: { frameId: "ember-ring", effect: "pulse" },
-    banner: { frameId: "banner-ember-drift", effect: "fade-in" },
-    nameplate: { frameId: "plate-gold", effect: "wiggle" },
-  },
-  luma: {
-    avatar: { frameId: "gold-laurel", effect: "swing" },
-    nameplate: { frameId: "plate-gold", effect: "pulse" },
-  },
-  masonr: {
-    avatar: { frameId: "circuit-cyan", effect: "pulse" },
-    banner: { frameId: "banner-neon-grid", effect: "parallax" },
-    nameplate: { frameId: "plate-holo", effect: "wiggle" },
-    snag: { frameId: "snag-corner-brackets", effect: "fade-in" },
-  },
-  vexx: {
-    snag: { frameId: "snag-arcade", effect: "pop" },
-  },
-};
+/** Frames a player has chosen to wear. Empty until somebody applies one. */
+export const SEED_LOADOUTS: Record<string, FrameLoadout> = {};
+
 
 export function loadoutFor(playerId: string, mine: FrameLoadout): FrameLoadout {
   if (playerId === "you") return mine;

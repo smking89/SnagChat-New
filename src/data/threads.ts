@@ -57,76 +57,8 @@ export function vanishLabel(message: ThreadMessage, at = Date.now()): string | n
   return `${minutes}m left`;
 }
 
-const now = Date.now();
-const minute = 60 * 1000;
+export const SEED_THREADS: Record<string, Thread> = {};
 
-export const SEED_THREADS: Record<string, Thread> = {
-  jax: {
-    playerId: "jax",
-    unread: 2,
-    updatedAt: now - 48 * minute,
-    mode: "keep",
-    messages: [
-      { id: "seed-jax-1", from: "them", at: now - 52 * minute, text: "that coastline clip is unreal" },
-      { id: "seed-jax-2", from: "them", at: now - 48 * minute, text: "how long did the run take?" },
-    ],
-  },
-  luma: {
-    playerId: "luma",
-    unread: 0,
-    updatedAt: now - 118 * minute,
-    mode: "keep",
-    messages: [
-      {
-        id: "seed-luma-1",
-        from: "them",
-        at: now - 124 * minute,
-        text: "squad room shots are up on my profile",
-      },
-      {
-        id: "seed-luma-2",
-        from: "me",
-        at: now - 118 * minute,
-        text: "pulling the purple ones for the gallery",
-        status: "read",
-      },
-    ],
-  },
-  otis: {
-    playerId: "otis",
-    unread: 0,
-    updatedAt: now - 40 * minute,
-    mode: "24h",
-    messages: [
-      { id: "seed-otis-1", from: "them", at: now - 46 * minute, text: "couch co-op tonight?" },
-      {
-        id: "seed-otis-2",
-        from: "me",
-        at: now - 40 * minute,
-        text: "in, 9pm",
-        status: "sent",
-      },
-    ],
-  },
-  kit: {
-    playerId: "kit",
-    unread: 1,
-    updatedAt: now - 12 * minute,
-    mode: "once",
-    messages: [
-      { id: "seed-kit-1", from: "them", at: now - 12 * minute, text: "send me the summit coordinates before I forget" },
-    ],
-  },
-  mira: {
-    playerId: "mira",
-    unread: 1,
-    updatedAt: now - 5 * 60 * minute,
-    mode: "keep",
-    messages: [
-      { id: "seed-mira-1", from: "them", at: now - 5 * 60 * minute, text: "castle fog at 5h is the best one yet" },
-    ],
-  },
-};
 
 export function lastMessage(thread: Thread): ThreadMessage | undefined {
   return thread.messages[thread.messages.length - 1];

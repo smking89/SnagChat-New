@@ -52,16 +52,15 @@ export function FramePreview({
         <Avatar name="MasonR" size={size} tone="soft" src={art} frame={use} online />
         <div className="min-w-0">
           <p
-            className={`min-w-0 truncate font-display font-extrabold tracking-[-0.03em] ${
+            className={`flex min-w-0 items-center gap-1 font-display font-extrabold tracking-[-0.03em] ${
               compact ? "text-[12px]" : "text-[17px]"
             }`}
           >
-            MasonR
+            <span className="truncate">MasonR</span>
+            <Icon name="verified" size={compact ? 11 : 14} className="shrink-0 text-[#1d9bf0]" />
           </p>
-          <p className={`mt-0.5 flex items-center gap-1 text-muted ${compact ? "text-[10px]" : "text-[11.5px]"}`}>
-            <span className="truncate">@masonr</span>
-            <Icon name="verified" size={compact ? 10 : 12} className="shrink-0 text-[#1d9bf0]" />
-            <span className="shrink-0">· DayZ</span>
+          <p className={`mt-0.5 truncate text-muted ${compact ? "text-[10px]" : "text-[11.5px]"}`}>
+            @masonr · DayZ
           </p>
           {!compact ? (
             <p className="mt-1.5 text-[10.5px] text-faint">Profile photo</p>
@@ -134,14 +133,11 @@ export function FramePreview({
           <Nameplate
             text="MasonR"
             use={use}
+            verified
             textClassName={
               compact ? "text-[11px] font-bold text-ink" : "text-[14px] font-extrabold text-ink"
             }
           />
-          <span className="inline-flex shrink-0 items-center gap-1 text-muted">
-            <span className={compact ? "text-[9px]" : "text-[10.5px]"}>@masonr</span>
-            <Icon name="verified" size={compact ? 9 : 11} className="shrink-0 text-[#1d9bf0]" />
-          </span>
           <span className="ml-auto flex shrink-0 items-center gap-2 text-faint">
             <Icon name="message" size={compact ? 12 : 15} />
             <Icon name="more" size={compact ? 12 : 15} />

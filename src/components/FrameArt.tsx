@@ -1,4 +1,5 @@
 import { findEffect, findFrame, type FrameUse, type FrameTarget } from "../data/frames";
+import { Icon } from "./Icon";
 
 /**
  * The two class names every animated frame needs: the effect itself, and
@@ -48,11 +49,13 @@ export function FrameLayer({ use, target, className = "", fill = true }: FrameLa
 export function Nameplate({
   text,
   use,
+  verified = false,
   className = "",
   textClassName = "",
 }: {
   text: string;
   use?: FrameUse;
+  verified?: boolean;
   className?: string;
   textClassName?: string;
 }) {
@@ -62,6 +65,7 @@ export function Nameplate({
     return (
       <span className={`inline-flex min-w-0 items-center gap-1 ${className}`}>
         <span className={`truncate ${textClassName}`}>{text}</span>
+        {verified ? <Icon name="verified" size={12} className="shrink-0 text-[#1d9bf0]" /> : null}
       </span>
     );
   }
@@ -73,6 +77,7 @@ export function Nameplate({
       <FrameLayer use={use} target="nameplate" className="!z-0" />
       <span className={`relative z-10 flex min-w-0 items-center gap-1 ${textClassName}`}>
         <span className="truncate">{text}</span>
+        {verified ? <Icon name="verified" size={12} className="shrink-0 text-[#1d9bf0]" /> : null}
       </span>
     </span>
   );

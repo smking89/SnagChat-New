@@ -15,61 +15,8 @@ export type AppNotification = {
   body?: string;
 };
 
-const now = Date.now();
-const minute = 60 * 1000;
-const hour = 60 * minute;
+export const SEED_NOTIFICATIONS: AppNotification[] = [];
 
-export const SEED_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: "n-1",
-    kind: "like",
-    actorId: "masonr",
-    snagId: "snag-01",
-    at: now - 6 * minute,
-    read: false,
-  },
-  {
-    id: "n-2",
-    kind: "comment",
-    actorId: "jax",
-    snagId: "snag-11",
-    at: now - 22 * minute,
-    read: false,
-    body: "Stealing half of these binds, thanks.",
-  },
-  {
-    id: "n-3",
-    kind: "follow",
-    actorId: "kirav",
-    at: now - 54 * minute,
-    read: false,
-  },
-  {
-    id: "n-4",
-    kind: "share",
-    actorId: "luma",
-    snagId: "snag-13",
-    at: now - 3 * hour,
-    read: true,
-  },
-  {
-    id: "n-5",
-    kind: "invite",
-    actorId: "nyx",
-    squadId: "static-kings",
-    at: now - 5 * hour,
-    read: true,
-  },
-  {
-    id: "n-6",
-    kind: "mention",
-    actorId: "wren",
-    snagId: "snag-14",
-    at: now - 26 * hour,
-    read: true,
-    body: "shot this one with @you in the lobby",
-  },
-];
 
 /** Headline for a notification, given the display names it needs. */
 export function notificationHeadline(

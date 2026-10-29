@@ -20,13 +20,12 @@ import {
   type FrameUse,
   type StripeAccount,
 } from "../data/frames";
-import { CosmeticGuidelines } from "./CosmeticGuidelines";
 import { CreatorStudio } from "./CreatorStudio";
 import { FramePreview } from "./FramePreview";
 import { Icon } from "./Icon";
 import { Screen, ScreenHeader } from "./Screen";
 
-type ShopTab = "shop" | "studio" | "creator" | "guide";
+type ShopTab = "shop" | "studio" | "creator";
 
 type ShopScreenProps = {
   onClose: () => void;
@@ -46,8 +45,6 @@ type ShopScreenProps = {
   onDisconnectStripe: () => void;
   onToast: (text: string, detail?: string) => void;
 };
-
-const HERO_FRAMES = FRAMES.slice(0, 4);
 
 const TARGET_LABEL: Record<FrameTarget, string> = {
   avatar: "avatar",
@@ -141,7 +138,7 @@ function FrameTile({
       className={`group relative w-full overflow-hidden rounded-2xl border bg-white text-left transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 ${
         selected
           ? "border-brand shadow-[0_8px_24px_rgba(124,58,237,0.14)] ring-2 ring-brand/20"
-          : "border-line hover:border-[#d8dce1]"
+          : "border-line hover:shadow-[0_10px_26px_rgba(23,25,29,0.1)]"
       }`}
     >
       <span className="absolute left-2 top-2 z-20 flex flex-col items-start gap-1">
@@ -157,7 +154,7 @@ function FrameTile({
         ) : null}
       </span>
 
-      <span className={`grid w-full place-items-center overflow-hidden bg-surface px-3 ${stageHeight}`}>
+      <span className={`grid w-full place-items-center overflow-hidden bg-[#f6f3f9] px-3 ${stageHeight}`}>
         <FramePreview
           frameId={frame.id}
           effect={DEFAULT_EFFECT[frame.target]}
@@ -168,7 +165,7 @@ function FrameTile({
       <span className="block border-t border-line px-3 py-2.5">
         <span className="flex items-start justify-between gap-2">
           <span className="min-w-0">
-            <span className="block truncate font-display text-[12.5px] font-extrabold tracking-[-0.02em] text-ink">
+            <span className="block truncate font-display text-[12.5px] font-extrabold tracking-[-0.02em]">
               {frame.name}
             </span>
             <span className="mt-0.5 block truncate text-[10px] text-muted">
@@ -205,7 +202,6 @@ export function ShopScreen({
   const [tab, setTab] = useState<ShopTab>("shop");
   const [filter, setFilter] = useState<FrameTarget | "all">("all");
   const [previewKey, setPreviewKey] = useState(0);
-  const [heroIndex, setHeroIndex] = useState(0);
   const panelRef = useRef<HTMLElement | null>(null);
 
   const catalog = useMemo(() => [...FRAMES, ...products], [products]);
@@ -307,81 +303,24 @@ export function ShopScreen({
 
       <div className="flex-1 overflow-y-auto bg-[#fbfbfc]">
         <div className="mx-auto max-w-[1200px] px-4 pb-16 pt-5 sm:px-6">
-          <section className="overflow-hidden rounded-3xl border border-line bg-white px-5 py-5 text-ink sm:px-7 sm:py-6">
-            <Eyebrow>Shop · effects · marketplace</Eyebrow>
+          <section className="overflow-hidden rounded-3xl bg-[#17191d] px-5 py-5 text-white sm:px-7 sm:py-6">
+            <Eyebrow>Frames · effects · marketplace</Eyebrow>
             <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
               <div className="min-w-0">
                 <h1 className="max-w-[22ch] font-display text-[24px] font-extrabold leading-[1.02] tracking-[-0.04em] sm:text-[31px]">
-                  Shop items that <span className="text-brand">do something.</span>
+                  Frames that <span className="text-[#d8b4fe]">do something.</span>
                 </h1>
-                <p className="mt-2 max-w-[56ch] text-[12px] leading-relaxed text-muted sm:text-[12.5px]">
+                <p className="mt-2 max-w-[56ch] text-[12px] leading-relaxed text-white/65 sm:text-[12.5px]">
                   Static artwork, animated by an effect you choose. Wear it on your photo, banner,
                   nameplate or a whole post card. Creators keep 97.5% of every sale.
                 </p>
               </div>
-              <div className="flex items-center gap-2 text-[10.5px] font-semibold text-[#4d535c]">
-                <span className="rounded-full bg-surface px-3 py-1.5">{ownedIds.size} owned</span>
-                <span className="rounded-full bg-surface px-3 py-1.5">
+              <div className="flex items-center gap-2 text-[10.5px] font-semibold text-white/70">
+                <span className="rounded-full bg-white/10 px-3 py-1.5">{ownedIds.size} owned</span>
+                <span className="rounded-full bg-white/10 px-3 py-1.5">
                   {products.length} creator drops
                 </span>
               </div>
-            </div>
-            <div className="mt-5 flex items-center gap-3 rounded-2xl border border-line bg-gradient-to-r from-brand-tint to-white p-3 sm:gap-5 sm:p-4">
-              <div className="grid h-[118px] w-[118px] shrink-0 place-items-center overflow-hidden rounded-xl bg-surface sm:h-[150px] sm:w-[150px]">
-                <FramePreview
-                  frameId={HERO_FRAMES[heroIndex % HERO_FRAMES.length]!.id}
-                  effect={DEFAULT_EFFECT[HERO_FRAMES[heroIndex % HERO_FRAMES.length]!.target]}
-                  compact
-                />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[9.5px] font-extrabold uppercase tracking-[0.16em] text-brand">
-                  Featured
-                </p>
-                <h2 className="mt-1 truncate font-display text-[17px] font-extrabold tracking-[-0.03em] text-ink sm:text-[20px]">
-                  {HERO_FRAMES[heroIndex % HERO_FRAMES.length]!.name}
-                </h2>
-                <p className="mt-0.5 truncate text-[11px] text-muted">
-                  {TARGET_LABEL[HERO_FRAMES[heroIndex % HERO_FRAMES.length]!.target]} frame ·{" "}
-                  {formatPrice(HERO_FRAMES[heroIndex % HERO_FRAMES.length]!.priceCents)}
-                </p>
-                <div className="mt-3 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      selectFrame(HERO_FRAMES[heroIndex % HERO_FRAMES.length]!);
-                      setTab("shop");
-                    }}
-                    className="h-8 rounded-full bg-brand px-4 text-[11px] font-semibold text-white transition-colors hover:bg-brand-deep"
-                  >
-                    View
-                  </button>
-                  <div className="flex items-center gap-1" aria-label="Featured frames">
-                    {HERO_FRAMES.map((frame, index) => (
-                      <button
-                        key={frame.id}
-                        type="button"
-                        onClick={() => setHeroIndex(index)}
-                        aria-label={`Show ${frame.name}`}
-                        aria-pressed={index === heroIndex % HERO_FRAMES.length}
-                        className={`h-1.5 rounded-full transition-all ${
-                          index === heroIndex % HERO_FRAMES.length ? "w-4 bg-brand" : "w-1.5 bg-line"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setHeroIndex((index) => (index + 1) % HERO_FRAMES.length)}
-                aria-label="Next featured frame"
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-line bg-white text-ink transition-colors hover:bg-surface"
-              >
-                <span className="inline-block rotate-180">
-                  <Icon name="back" size={16} />
-                </span>
-              </button>
             </div>
           </section>
 
@@ -389,9 +328,8 @@ export function ShopScreen({
             {(
               [
                 { id: "shop", label: "Shop", count: catalog.length },
-                { id: "studio", label: "Owned", count: ownedIds.size },
+                { id: "studio", label: "Your frames", count: ownedIds.size },
                 { id: "creator", label: "Creator", count: products.length },
-                { id: "guide", label: "Guidelines", count: 0 },
               ] as const
             ).map((entry) => (
               <button
@@ -406,21 +344,19 @@ export function ShopScreen({
                 }`}
               >
                 {entry.label}
-                {entry.id === "guide" ? null : (
-                  <span
-                    className={`text-[9.5px] font-bold ${
-                      tab === entry.id ? "text-white/60" : "text-faint"
-                    }`}
-                  >
-                    {entry.count}
-                  </span>
-                )}
+                <span
+                  className={`text-[9.5px] font-bold ${
+                    tab === entry.id ? "text-white/60" : "text-faint"
+                  }`}
+                >
+                  {entry.count}
+                </span>
               </button>
             ))}
           </div>
 
           {tab === "shop" ? (
-            <div className="mt-4 rounded-3xl border border-line bg-white p-3 sm:p-5">
+            <div className="mt-4">
               <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
@@ -432,7 +368,7 @@ export function ShopScreen({
                       : "border-line bg-white text-[#4d535c] hover:border-[#d8dce1]"
                   }`}
                 >
-                  All items
+                  All frames
                 </button>
                 {TARGETS.map((target) => {
                   const active = filter === target.id;
@@ -460,7 +396,7 @@ export function ShopScreen({
                   className="order-1 scroll-mt-4 lg:order-2 lg:sticky lg:top-4"
                   aria-label="Live frame preview"
                 >
-                  <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
+                  <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-[0_10px_30px_rgba(23,25,29,0.08)]">
                     <div className="flex items-start justify-between gap-2 border-b border-line px-3.5 py-2.5">
                       <div className="min-w-0">
                         <Eyebrow>Live preview</Eyebrow>
@@ -479,7 +415,7 @@ export function ShopScreen({
 
                     <div
                       key={`${selected.id}-${effect}-${previewKey}`}
-                      className="is-playing bg-surface px-4 py-5 sm:px-5"
+                      className="is-playing bg-[#f4f0f8] px-4 py-5 sm:px-5"
                     >
                       <FramePreview frameId={selected.id} effect={effect} playing />
                     </div>
@@ -487,7 +423,7 @@ export function ShopScreen({
                     <div className="px-4 pb-4 pt-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h2 className="truncate font-display text-[18px] font-extrabold tracking-[-0.03em] text-ink">
+                          <h2 className="truncate font-display text-[18px] font-extrabold tracking-[-0.03em]">
                             {selected.name}
                           </h2>
                           <p className="mt-0.5 truncate text-[10.5px] text-muted">
@@ -803,12 +739,6 @@ export function ShopScreen({
             </div>
           ) : null}
 
-          {tab === "guide" ? (
-            <div className="mt-4">
-              <CosmeticGuidelines onOpenCreator={() => setTab("creator")} />
-            </div>
-          ) : null}
-
           {tab === "creator" ? (
             <div className="mt-4">
               <CreatorStudio
@@ -823,7 +753,6 @@ export function ShopScreen({
                 onConnectStripe={onConnectStripe}
                 onDisconnectStripe={onDisconnectStripe}
                 onToast={onToast}
-                onOpenGuidelines={() => setTab("guide")}
               />
             </div>
           ) : null}

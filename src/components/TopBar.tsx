@@ -1,4 +1,5 @@
 import { useEffect, useRef, type Ref } from "react";
+import { SHOP_ENABLED } from "../lib/features";
 import type { NavTab } from "../types";
 import { Icon } from "./Icon";
 
@@ -23,9 +24,6 @@ type TopBarProps = {
   unreadCount: number;
   notificationCount: number;
   onOpenNotifications: () => void;
-  /** A demo session can turn into a real account from anywhere in the app. */
-  demoSession?: boolean;
-  onSignIn?: () => void;
 };
 
 export function TopBar({
@@ -40,8 +38,6 @@ export function TopBar({
   unreadCount,
   notificationCount,
   onOpenNotifications,
-  demoSession = false,
-  onSignIn,
 }: TopBarProps) {
   const headerRef = useRef<HTMLElement | null>(null);
 
@@ -71,11 +67,12 @@ export function TopBar({
   };
 
   return (
-    // Sticky from lg up so the desktop navigation never scrolls away; the tab
-    // rail below parks itself under the header at that size.
+    // Pinned at every size so the search, notifications and squad actions keep
+    // the same spot on screen while the feed scrolls; the tab rail below parks
+    // itself directly under the header.
     <header
       ref={setHeaderRef}
-      className="relative z-40 border-b border-line/80 bg-white/92 backdrop-blur-xl lg:sticky lg:top-0"
+      className="sticky top-0 z-40 border-b border-line/80 bg-white/92 backdrop-blur-xl"
     >
       <div className="mx-auto flex h-16 max-w-[1320px] items-center gap-3 px-4 sm:px-6">
         <button
@@ -101,7 +98,7 @@ export function TopBar({
         </button>
 
         <nav aria-label="Primary" className="ml-5 hidden items-center gap-0.5 lg:flex">
-          {NAV_LINKS.map(({ tab, label }) => {
+          {NAV_LINKS.filter(({ tab }) => SHOP_ENABLED || tab !== "shop").map(({ tab, label }) => {
             const isActive = activeTab === tab;
             return (
               <button
@@ -159,17 +156,6 @@ export function TopBar({
 
           <button
             type="button"
-            onClick={() => onNavigate("shop")}
-            aria-label="Shop"
-            className={`grid h-11 w-11 place-items-center rounded-full border border-line bg-white transition-colors lg:hidden ${
-              activeTab === "shop" ? "text-brand" : "text-ink hover:border-[#d8dce1] hover:text-brand"
-            }`}
-          >
-            <Icon name="shop" size={22} />
-          </button>
-
-          <button
-            type="button"
             onClick={() => onNavigate("squads")}
             aria-label="Squads"
             className={`grid h-11 w-11 place-items-center rounded-full border border-line bg-white transition-colors ${
@@ -178,16 +164,6 @@ export function TopBar({
           >
             <Icon name="users" size={22} />
           </button>
-
-          {demoSession && onSignIn ? (
-            <button
-              type="button"
-              onClick={onSignIn}
-              className="h-10 shrink-0 rounded-full border border-brand px-3 text-[11.5px] font-semibold text-brand transition-colors hover:bg-brand-soft"
-            >
-              Log in
-            </button>
-          ) : null}
 
           <button
             type="button"

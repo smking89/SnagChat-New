@@ -147,8 +147,8 @@ export function TopGamesSheet({
                       picked ? "border-brand bg-brand-tint" : "border-line hover:border-[#d8dce1]"
                     }`}
                   >
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-ink">
-                      <GameLogo game={game.name} height={22} width={32} />
+                    <span className="grid h-10 w-10 shrink-0 place-items-center">
+                      <GameLogo game={game.name} height={28} width={34} />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[12.5px] font-semibold text-ink">{game.name}</span>

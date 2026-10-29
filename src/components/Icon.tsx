@@ -15,7 +15,6 @@ type IconName =
   | "edit"
   | "heart"
   | "share"
-  | "story"
   | "bookmark"
   | "bell"
   | "more"
@@ -68,13 +67,6 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M12 5.6v12.8" />
       <path d="M5.6 12h12.8" />
-    </>
-  ),
-  story: (
-    <>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 8.4v7.2" />
-      <path d="M8.4 12h7.2" />
     </>
   ),
   users: (
