@@ -52,6 +52,10 @@ generated.
 - The app declares `color-scheme: only light`, so Chrome and Android WebView forced dark mode no longer invert the white auth buttons and darken the welcome screen.
 - The green online dot paints on top of ringed, coloured and video avatars, and the add-photo badge no longer covers it — that badge owns the corner only while your own profile has no photo, so the dot is hidden in that one state.
 
+## [2026-10-29] — 6848dee
+
+- feat(admin): add staff admin portal with a role-scoped API
+
 ## [2026-10-28] — a8dff9a
 
 - Fix APK blank page by loading the WebView's asset host
@@ -88,5 +92,6 @@ generated.
 ### Added
 
 - Initial cloud project and the first build of the SnagChat preview.
+
 
 
