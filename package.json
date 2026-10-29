@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:api": "wrangler dev --port 8787",
+    "db:local": "wrangler d1 execute snagchat_admin --local --file deploy/schema.sql && wrangler d1 execute snagchat_admin --local --file deploy/seed.sql",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types --test src/engine/*.test.ts src/data/*.test.ts",
+    "test": "node --experimental-strip-types --test src/engine/*.test.ts src/data/*.test.ts deploy/*.test.js",
     "changelog": "node scripts/changelog.mjs"
   },
   "dependencies": {
@@ -22,6 +24,7 @@
     "@vitejs/plugin-react": "^5.0.0",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.9.0",
-    "vite": "^7.1.0"
+    "vite": "^7.1.0",
+    "wrangler": "^4.155.0"
   }
 }

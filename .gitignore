@@ -3,6 +3,8 @@ dist
 .scratch
 .DS_Store
 *.local
+# Local Wrangler state: the dev D1 database for the staff API
+.wrangler
 snagchat-source.zip
 # Local Android toolchain, Gradle output and the web build copied into the APK
 .toolchain

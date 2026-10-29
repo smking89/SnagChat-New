@@ -1,0 +1,17 @@
+# Local development config for the staff API (`npm run dev:api`).
+# Deployment uses deploy-manifest.json; the hosted D1 database is provisioned
+# by the platform and injected as the `DB` binding — this file only wires the
+# local Wrangler dev server, where D1 lives in .wrangler/state.
+
+name = "snagchat"
+main = "deploy/worker.js"
+compatibility_date = "2026-10-27"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "snagchat_admin"
+database_id = "00000000-0000-0000-0000-000000000000"
