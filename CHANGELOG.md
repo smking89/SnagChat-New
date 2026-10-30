@@ -52,6 +52,10 @@ generated.
 - The app declares `color-scheme: only light`, so Chrome and Android WebView forced dark mode no longer invert the white auth buttons and darken the welcome screen.
 - The green online dot paints on top of ringed, coloured and video avatars, and the add-photo badge no longer covers it — that badge owns the corner only while your own profile has no photo, so the dot is hidden in that one state.
 
+## [2026-10-30] — 57801b8
+
+- ci: add Azure Static Web Apps workflow file on-behalf-of: @Azure opensource@microsoft.com
+
 ## [2026-10-29] — 607d6a6
 
 - ci: bump checkout and setup-node to the Node 24 releases
@@ -108,6 +112,7 @@ generated.
 ### Added
 
 - Initial cloud project and the first build of the SnagChat preview.
+
 
 
 
